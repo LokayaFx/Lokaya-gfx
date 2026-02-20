@@ -1,1 +1,0 @@
-# Lokaya-gfx

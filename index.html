@@ -435,4 +435,704 @@
     .glass {
       background: rgba(255,255,255,0.04);
       backdrop-filter: blur(24px) saturate(180%);
-      -webkit-b
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid rgba(191,0,255,0.18);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+
+    .glass-card {
+      background: rgba(255,255,255,0.03);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(191,0,255,0.2);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+      transition: all 0.35s cubic-bezier(0.23,1,0.32,1);
+    }
+    .glass-card:hover {
+      border-color: rgba(191,0,255,0.5);
+      box-shadow: 0 8px 40px rgba(191,0,255,0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+      transform: translateY(-4px);
+    }
+
+    /* Navbar glass */
+    .navbar-glass {
+      background: rgba(6,6,9,0.75);
+      backdrop-filter: blur(32px);
+      -webkit-backdrop-filter: blur(32px);
+      border-bottom: 1px solid rgba(191,0,255,0.15);
+    }
+
+    /* Liquid glass button */
+    .btn-liquid {
+      position: relative; overflow: hidden;
+      background: rgba(191,0,255,0.1);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(191,0,255,0.45);
+      box-shadow: 0 0 18px rgba(191,0,255,0.25), inset 0 1px 0 rgba(255,255,255,0.12);
+      transition: all 0.3s cubic-bezier(0.23,1,0.32,1);
+      cursor: pointer;
+    }
+    .btn-liquid::before {
+      content: '';
+      position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+      transition: left 0.5s ease;
+    }
+    .btn-liquid:hover::before { left: 100%; }
+    .btn-liquid:hover {
+      background: rgba(191,0,255,0.22);
+      border-color: rgba(217,102,255,0.7);
+      box-shadow: 0 0 32px rgba(191,0,255,0.45), inset 0 1px 0 rgba(255,255,255,0.18);
+      transform: translateY(-1px);
+    }
+
+    /* Solid purple button */
+    .btn-purple {
+      background: linear-gradient(135deg, #7b00cc, #bf00ff);
+      border: 1px solid rgba(217,102,255,0.4);
+      box-shadow: 0 4px 20px rgba(191,0,255,0.35);
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    .btn-purple:hover {
+      box-shadow: 0 4px 32px rgba(191,0,255,0.55);
+      transform: translateY(-1px);
+    }
+
+    .btn-icon {
+      width: 32px; height: 32px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-icon:hover { background: rgba(255,255,255,0.08); }
+
+    /* Views */
+    .view { display: none; }
+    .active-view { display: block; }
+
+    /* Dash sections */
+    .dash-section { display: none; }
+    .active-dash { display: block; }
+
+    /* Tab active */
+    .tab-active {
+      background: rgba(191,0,255,0.15) !important;
+      border-color: rgba(191,0,255,0.5) !important;
+      color: #d966ff !important;
+    }
+
+    /* Inputs */
+    .gfx-input {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(191,0,255,0.2);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #e0d8f0;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .gfx-input:focus {
+      border-color: rgba(191,0,255,0.55);
+      box-shadow: 0 0 0 3px rgba(191,0,255,0.1);
+    }
+    .gfx-input::placeholder { color: rgba(200,180,220,0.3); }
+    select.gfx-input option { background: #1a0033; color: #e0d8f0; }
+
+    /* Label */
+    .gfx-label {
+      display: block;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: rgba(217,102,255,0.7);
+      margin-bottom: 6px;
+    }
+
+    /* Badge */
+    .badge {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(191,0,255,0.15);
+      border: 1px solid rgba(191,0,255,0.35);
+      color: var(--glow);
+    }
+
+    /* Progress */
+    .progress-track {
+      width: 100%; height: 10px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(191,0,255,0.12);
+      border-radius: 99px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; border-radius: 99px;
+      background: linear-gradient(90deg, #7b00cc, #bf00ff, #d966ff);
+      box-shadow: 0 0 10px rgba(191,0,255,0.5);
+      animation: fillBar 1.2s cubic-bezier(0.23,1,0.32,1) forwards;
+    }
+    @keyframes fillBar { from { width: 0; } to { width: var(--pct); } }
+
+    /* Spinner */
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid rgba(191,0,255,0.15);
+      border-top-color: var(--neon);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Neon text */
+    .neon-text {
+      text-shadow: 0 0 20px var(--neon), 0 0 50px var(--mid);
+    }
+
+    /* Shimmer */
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .shimmer-text {
+      background: linear-gradient(90deg, #fff 0%, var(--glow) 40%, #fff 60%, var(--glow) 100%);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 4s linear infinite;
+    }
+
+    /* Glow dot */
+    .glow-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--neon);
+      box-shadow: 0 0 6px var(--neon), 0 0 12px var(--neon);
+      animation: pulseDot 2s ease-in-out infinite;
+    }
+    @keyframes pulseDot {
+      0%,100% { opacity: 1; } 50% { opacity: 0.4; }
+    }
+
+    /* Pulse CTA */
+    @keyframes pulseGlow {
+      0%,100% { box-shadow: 0 0 18px rgba(191,0,255,0.3); }
+      50% { box-shadow: 0 0 40px rgba(191,0,255,0.65), 0 0 80px rgba(191,0,255,0.2); }
+    }
+    .pulse-glow { animation: pulseGlow 3s ease-in-out infinite; }
+
+    /* Float */
+    @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    .float { animation: float 4s ease-in-out infinite; }
+
+    /* Scanline */
+    .scanline {
+      position: absolute; inset: 0; pointer-events: none;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(191,0,255,0.012) 2px, rgba(191,0,255,0.012) 4px);
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--mid); border-radius: 4px; }
+
+    /* Toast */
+    .toast-base {
+      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+      min-width: 280px; max-width: 360px;
+      padding: 14px 18px; border-radius: 14px;
+      font-family: 'Poppins', sans-serif; font-size: 0.8rem;
+      backdrop-filter: blur(24px);
+      display: flex; align-items: center; gap: 10px;
+      transition: all 0.4s cubic-bezier(0.23,1,0.32,1);
+    }
+    .toast-hidden { opacity: 0; transform: translateY(20px); pointer-events: none; }
+    .toast-show { opacity: 1; transform: translateY(0); }
+
+    /* Mobile menu */
+    #mobileMenu { display: none; }
+    #mobileMenu.open { display: flex; }
+
+    /* Section tag */
+    .section-tag {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.68rem; letter-spacing: 0.3em;
+      text-transform: uppercase; color: var(--glow); opacity: 0.7;
+    }
+
+    /* Line clamp */
+    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+    /* Lightbox */
+    #lightbox { position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 20px; }
+
+    /* Hero section */
+    .hero-section { min-height: 100vh; display: flex; align-items: center; position: relative; overflow: hidden; padding-top: 80px; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════
+     TOAST
+═══════════════════════════════════════════════════════ -->
+<div id="toast" class="toast-base toast-hidden glass border border-purple-500 text-purple-300">
+  <i class="fa-solid fa-circle-info text-sm flex-shrink-0"></i>
+  <span id="toastMsg"></span>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     LIGHTBOX
+═══════════════════════════════════════════════════════ -->
+<div id="lightbox" class="hidden" onclick="if(event.target===this)closeLightbox()">
+  <div class="glass rounded-2xl overflow-hidden max-w-3xl w-full relative">
+    <button onclick="closeLightbox()" class="absolute top-4 right-4 z-10 btn-icon text-gray-400 hover:text-white">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+    <img id="lbImg" src="" alt="" class="w-full max-h-[65vh] object-contain bg-black"/>
+    <div class="p-6">
+      <h3 id="lbTitle" class="font-bebas text-2xl text-white tracking-wider"></h3>
+      <p id="lbDesc" class="font-poppins text-gray-400 text-sm mt-2"></p>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     NAVBAR
+═══════════════════════════════════════════════════════ -->
+<nav class="navbar-glass fixed top-0 left-0 right-0 z-50">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
+
+    <!-- Logo -->
+    <button onclick="showView('public')" class="flex items-center gap-2 focus:outline-none">
+      <div class="w-8 h-8 rounded-lg glass flex items-center justify-center pulse-glow">
+        <i class="fa-solid fa-fire text-purple-400 text-sm"></i>
+      </div>
+      <span class="font-bebas text-white text-xl tracking-widest">LOKAYA<span class="text-purple-400">GFX</span></span>
+    </button>
+
+    <!-- Desktop Nav -->
+    <div class="hidden md:flex items-center gap-6">
+      <a href="#armory" class="font-poppins text-xs font-medium tracking-widest uppercase text-gray-400 hover:text-purple-300 transition-colors">Armory</a>
+      <a href="#status-section" class="font-poppins text-xs font-medium tracking-widest uppercase text-gray-400 hover:text-purple-300 transition-colors">Live Status</a>
+
+      <!-- Admin only -->
+      <button id="adminBtn" onclick="showView('dashboard')"
+        class="hidden btn-liquid px-4 py-2 rounded-lg font-poppins font-semibold text-xs tracking-wider text-purple-300 uppercase flex items-center gap-2">
+        <i class="fa-solid fa-gauge-high text-xs"></i> Dashboard
+      </button>
+
+      <!-- Login -->
+      <button id="loginBtn" onclick="loginWithGoogle()"
+        class="btn-liquid px-4 py-2 rounded-lg font-poppins font-semibold text-xs tracking-wider text-purple-300 uppercase flex items-center gap-2">
+        <i class="fa-brands fa-google text-xs"></i> Admin Login
+      </button>
+
+      <!-- Logout -->
+      <button id="logoutBtn" onclick="logoutUser()"
+        class="hidden btn-icon text-gray-500 hover:text-red-400">
+        <i class="fa-solid fa-right-from-bracket text-xs"></i>
+      </button>
+    </div>
+
+    <!-- Mobile hamburger -->
+    <button class="md:hidden text-purple-300 text-lg" onclick="document.getElementById('mobileMenu').classList.toggle('open')">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+  </div>
+
+  <!-- Mobile Menu -->
+  <div id="mobileMenu" class="flex-col gap-3 px-4 pb-4 md:hidden border-t border-purple-900/20">
+    <a href="#armory" class="font-poppins text-xs uppercase tracking-widest text-gray-400 py-1" onclick="document.getElementById('mobileMenu').classList.remove('open')">Armory</a>
+    <a href="#status-section" class="font-poppins text-xs uppercase tracking-widest text-gray-400 py-1" onclick="document.getElementById('mobileMenu').classList.remove('open')">Live Status</a>
+    <button id="adminBtnMob" onclick="showView('dashboard');document.getElementById('mobileMenu').classList.remove('open')"
+      class="hidden btn-liquid px-4 py-2 rounded-lg font-poppins text-xs text-purple-300 uppercase text-left">
+      <i class="fa-solid fa-gauge-high mr-2"></i> Dashboard
+    </button>
+    <button id="loginBtnMob" onclick="loginWithGoogle()"
+      class="btn-liquid px-4 py-2 rounded-lg font-poppins text-xs text-purple-300 uppercase text-left">
+      <i class="fa-brands fa-google mr-2"></i> Admin Login
+    </button>
+  </div>
+</nav>
+
+<!-- ════════════════════════════════════════════════════
+     PUBLIC VIEW
+═══════════════════════════════════════════════════════ -->
+<div id="public" class="view">
+
+  <!-- ── HERO ─────────────────────────────────────── -->
+  <section class="hero-section px-4 sm:px-6">
+    <div class="scanline"></div>
+
+    <!-- Orbs -->
+    <div class="absolute top-24 left-1/4 w-80 h-80 rounded-full opacity-20 blur-3xl pointer-events-none"
+         style="background: radial-gradient(circle, #bf00ff, transparent)"></div>
+    <div class="absolute bottom-24 right-1/4 w-60 h-60 rounded-full opacity-10 blur-3xl pointer-events-none"
+         style="background: radial-gradient(circle, #7b00cc, transparent)"></div>
+
+    <div class="max-w-7xl mx-auto w-full py-20 grid md:grid-cols-2 gap-12 items-center relative z-10">
+      <!-- Text -->
+      <div>
+        <p class="section-tag mb-5">⚡ Free Fire Design Studio</p>
+        <h1 class="font-bebas text-7xl sm:text-8xl lg:text-9xl leading-none mb-6">
+          <span class="block text-white">LEVEL UP</span>
+          <span class="block shimmer-text">YOUR</span>
+          <span class="block text-white neon-text">IDENTITY</span>
+        </h1>
+        <p class="font-poppins text-gray-400 text-base max-w-md mb-10 leading-relaxed">
+          Premium Free Fire logos, banners & overlays — crafted for squads that demand elite visual presence. No compromises. Only dominance.
+        </p>
+        <div class="flex flex-wrap gap-4 items-center">
+          <a href="https://lokayagfx.netlify.app/" target="_blank"
+             class="btn-liquid px-8 py-4 rounded-xl font-poppins font-bold text-sm text-white uppercase tracking-wider flex items-center gap-2 pulse-glow">
+            🔥 GET FREE LOGOS
+          </a>
+          <a href="#armory" class="font-poppins text-xs text-gray-500 hover:text-purple-300 transition-colors uppercase tracking-wider flex items-center gap-2">
+            View Armory <i class="fa-solid fa-arrow-right text-xs"></i>
+          </a>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-3 gap-3 mt-14">
+          <div class="glass rounded-xl p-4 text-center">
+            <p class="font-bebas text-3xl text-purple-300">500+</p>
+            <p class="font-mono text-xs text-gray-600 uppercase tracking-wider mt-1">Designs</p>
+          </div>
+          <div class="glass rounded-xl p-4 text-center">
+            <p class="font-bebas text-3xl text-purple-300">200+</p>
+            <p class="font-mono text-xs text-gray-600 uppercase tracking-wider mt-1">Clients</p>
+          </div>
+          <div class="glass rounded-xl p-4 text-center">
+            <p class="font-bebas text-3xl text-purple-300">4.9★</p>
+            <p class="font-mono text-xs text-gray-600 uppercase tracking-wider mt-1">Rating</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visual -->
+      <div class="flex justify-center">
+        <div class="float">
+          <div class="glass rounded-2xl p-2 w-72 h-72 sm:w-80 sm:h-80 flex items-center justify-center relative overflow-hidden"
+               style="background: rgba(191,0,255,0.05)">
+            <div class="absolute inset-0 rounded-2xl" style="background: radial-gradient(circle at 50% 30%, rgba(191,0,255,0.18), transparent 60%)"></div>
+            <div class="relative z-10 text-center">
+              <div class="text-9xl mb-3" style="filter: drop-shadow(0 0 30px #bf00ff) drop-shadow(0 0 60px #7b00cc)">🔥</div>
+              <p class="font-bebas text-xl text-white tracking-widest">LOKAYA GFX</p>
+              <p class="font-mono text-xs text-purple-400 mt-1 tracking-widest">ELITE DESIGN STUDIO</p>
+            </div>
+            <!-- Corner accents -->
+            <div class="absolute top-3 left-3 w-5 h-5 border-t border-l border-purple-500 rounded-tl opacity-60"></div>
+            <div class="absolute top-3 right-3 w-5 h-5 border-t border-r border-purple-500 rounded-tr opacity-60"></div>
+            <div class="absolute bottom-3 left-3 w-5 h-5 border-b border-l border-purple-500 rounded-bl opacity-60"></div>
+            <div class="absolute bottom-3 right-3 w-5 h-5 border-b border-r border-purple-500 rounded-br opacity-60"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── PORTFOLIO (THE ARMORY) ────────────────────── -->
+  <section id="armory" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
+    <div class="text-center mb-14">
+      <p class="section-tag mb-3">— Portfolio —</p>
+      <h2 class="font-bebas text-5xl sm:text-6xl text-white">THE <span class="shimmer-text">ARMORY</span></h2>
+      <p class="font-poppins text-gray-500 text-sm mt-3">Weapons of visual warfare</p>
+    </div>
+    <div id="portfolioGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="col-span-full flex justify-center py-16"><div class="spinner"></div></div>
+    </div>
+  </section>
+
+  <!-- ── LIVE STATUS TRACKER ───────────────────────── -->
+  <section id="status-section" class="py-24 relative">
+    <div class="absolute inset-0 pointer-events-none opacity-5"
+         style="background: radial-gradient(ellipse 60% 60% at 80% 50%, #bf00ff, transparent)"></div>
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 relative z-10">
+      <div class="text-center mb-14">
+        <p class="section-tag mb-3">— Live Updates —</p>
+        <h2 class="font-bebas text-5xl sm:text-6xl text-white">ACTIVE <span class="shimmer-text">PROJECTS</span></h2>
+        <p class="font-poppins text-gray-500 text-sm mt-3">Real-time status of ongoing missions</p>
+      </div>
+
+      <div class="glass-card rounded-2xl p-6 sm:p-8">
+        <!-- Status header -->
+        <div class="flex items-center justify-between mb-8">
+          <div class="flex items-center gap-2">
+            <div class="glow-dot"></div>
+            <span class="font-mono text-xs text-purple-400 uppercase tracking-widest">System Online</span>
+          </div>
+          <span class="badge">Live</span>
+        </div>
+
+        <div id="statusContainer" class="flex flex-col gap-5">
+          <div class="flex justify-center py-10"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── FOOTER ────────────────────────────────────── -->
+  <footer class="border-t border-purple-900/25 py-12 px-4 sm:px-6 relative z-10">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
+      <div class="text-center sm:text-left">
+        <div class="flex items-center gap-2 justify-center sm:justify-start mb-1">
+          <i class="fa-solid fa-fire text-purple-500"></i>
+          <span class="font-bebas text-white text-xl tracking-widest">LOKAYA<span class="text-purple-400">GFX</span></span>
+        </div>
+        <p class="font-poppins text-gray-600 text-xs">Elite Free Fire Design Studio · © 2024</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="https://wa.me/your-number" target="_blank"
+           class="w-11 h-11 glass-card rounded-xl flex items-center justify-center hover:border-green-500 transition-colors">
+          <i class="fa-brands fa-whatsapp text-green-400"></i>
+        </a>
+        <a href="https://discord.gg/your-server" target="_blank"
+           class="w-11 h-11 glass-card rounded-xl flex items-center justify-center hover:border-indigo-400 transition-colors">
+          <i class="fa-brands fa-discord text-indigo-400"></i>
+        </a>
+        <a href="#" class="w-11 h-11 glass-card rounded-xl flex items-center justify-center hover:border-pink-400 transition-colors">
+          <i class="fa-brands fa-instagram text-pink-400"></i>
+        </a>
+        <a href="#" class="w-11 h-11 glass-card rounded-xl flex items-center justify-center hover:border-red-400 transition-colors">
+          <i class="fa-brands fa-youtube text-red-400"></i>
+        </a>
+      </div>
+    </div>
+  </footer>
+</div><!-- /public -->
+
+<!-- ════════════════════════════════════════════════════
+     ADMIN DASHBOARD VIEW
+═══════════════════════════════════════════════════════ -->
+<div id="dashboard" class="view">
+  <div class="min-h-screen pt-20 pb-16 px-4 sm:px-6 max-w-7xl mx-auto relative z-10">
+
+    <!-- Dash Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div>
+        <p class="section-tag mb-1">Admin Panel</p>
+        <h1 class="font-bebas text-4xl sm:text-5xl text-white tracking-wider">COMMAND <span class="text-purple-400">CENTER</span></h1>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="showView('public')"
+          class="btn-liquid px-4 py-2 rounded-lg font-poppins text-xs text-gray-400 uppercase tracking-wider flex items-center gap-2">
+          <i class="fa-solid fa-arrow-left text-xs"></i> Back to Site
+        </button>
+        <button onclick="logoutUser()"
+          class="btn-liquid px-4 py-2 rounded-lg font-poppins text-xs text-red-400 uppercase tracking-wider flex items-center gap-2">
+          <i class="fa-solid fa-right-from-bracket text-xs"></i> Sign Out
+        </button>
+      </div>
+    </div>
+
+    <!-- Dash Tabs -->
+    <div class="flex gap-3 mb-8">
+      <button id="tab-dash" onclick="showDash('dash')"
+        class="dash-tab tab-active btn-liquid px-5 py-2.5 rounded-xl font-poppins font-semibold text-xs uppercase tracking-wider text-purple-300 flex items-center gap-2">
+        <i class="fa-solid fa-images"></i> Portfolio Manager
+      </button>
+      <button id="tab-status" onclick="showDash('status')"
+        class="dash-tab btn-liquid px-5 py-2.5 rounded-xl font-poppins font-semibold text-xs uppercase tracking-wider text-gray-400 flex items-center gap-2">
+        <i class="fa-solid fa-chart-simple"></i> Status Manager
+      </button>
+    </div>
+
+    <!-- ── PORTFOLIO MANAGER ──────────────────────── -->
+    <div id="dashSection" class="dash-section">
+      <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+        <!-- Add/Edit Form -->
+        <div id="portfolioForm" class="lg:col-span-2 glass-card rounded-2xl p-6 h-fit">
+          <h2 class="font-bebas text-2xl text-white tracking-wider mb-6 flex items-center gap-2">
+            <i class="fa-solid fa-plus text-purple-400 text-lg"></i> Add to Armory
+          </h2>
+          <input type="hidden" id="editPortfolioId"/>
+
+          <div class="flex flex-col gap-4">
+            <div>
+              <label class="gfx-label">Title *</label>
+              <input id="pTitle" type="text" class="gfx-input" placeholder="e.g. Skull Squad Logo"/>
+            </div>
+            <div>
+              <label class="gfx-label">Description</label>
+              <textarea id="pDesc" class="gfx-input resize-none" rows="3" placeholder="Short description of the work..."></textarea>
+            </div>
+            <div>
+              <label class="gfx-label">Image URL *</label>
+              <input id="pImg" type="url" class="gfx-input" placeholder="https://i.imgur.com/..."/>
+              <p class="font-poppins text-xs text-gray-600 mt-1">Use Imgur, imgbb, or any direct image URL.</p>
+            </div>
+            <div>
+              <label class="gfx-label">Category</label>
+              <select id="pCat" class="gfx-input">
+                <option value="">— Select Category —</option>
+                <option value="Logo">Logo</option>
+                <option value="Banner">Banner</option>
+                <option value="Thumbnail">Thumbnail</option>
+                <option value="Overlay">Overlay</option>
+                <option value="Clan Kit">Clan Kit</option>
+                <option value="Profile Kit">Profile Kit</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex gap-3 mt-6">
+            <button id="savePortfolioBtn" onclick="savePortfolioItem()"
+              class="btn-purple flex-1 px-4 py-3 rounded-xl font-poppins font-semibold text-xs tracking-wider text-white uppercase flex items-center justify-center gap-2">
+              <i class="fa-solid fa-plus mr-2"></i>Add to Armory
+            </button>
+            <button id="cancelEditPortfolio" onclick="cancelPortfolioEdit()"
+              class="hidden btn-liquid px-4 py-3 rounded-xl font-poppins text-xs text-gray-400 uppercase">
+              Cancel
+            </button>
+          </div>
+        </div>
+
+        <!-- Item List -->
+        <div class="lg:col-span-3 glass-card rounded-2xl p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="font-bebas text-2xl text-white tracking-wider flex items-center gap-2">
+              <i class="fa-solid fa-layer-group text-purple-400 text-lg"></i> Current Portfolio
+            </h2>
+            <button onclick="loadDashboardPortfolio()" class="btn-icon text-gray-500 hover:text-purple-300">
+              <i class="fa-solid fa-rotate-right text-xs"></i>
+            </button>
+          </div>
+          <div id="dashPortfolioList" class="flex flex-col gap-3 max-h-[600px] overflow-y-auto pr-1">
+            <div class="flex justify-center py-10"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STATUS MANAGER ────────────────────────── -->
+    <div id="statusSection" class="dash-section">
+      <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+        <!-- Add/Edit Form -->
+        <div id="statusForm" class="lg:col-span-2 glass-card rounded-2xl p-6 h-fit">
+          <h2 class="font-bebas text-2xl text-white tracking-wider mb-6 flex items-center gap-2">
+            <i class="fa-solid fa-plus text-purple-400 text-lg"></i> Add Status
+          </h2>
+          <input type="hidden" id="editStatusId"/>
+
+          <div class="flex flex-col gap-4">
+            <div>
+              <label class="gfx-label">Client Name *</label>
+              <input id="sClient" type="text" class="gfx-input" placeholder="e.g. @GarenFire_YT"/>
+            </div>
+            <div>
+              <label class="gfx-label">Project Title</label>
+              <input id="sProject" type="text" class="gfx-input" placeholder="e.g. Squad Logo Design"/>
+            </div>
+            <div>
+              <label class="gfx-label">Progress Level</label>
+              <select id="sProgress" class="gfx-input">
+                <option value="10">10% — Starting</option>
+                <option value="25">25% — In Progress</option>
+                <option value="50" selected>50% — Halfway</option>
+                <option value="75">75% — Almost Done</option>
+                <option value="100">100% — Complete ✓</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex gap-3 mt-6">
+            <button id="saveStatusBtn" onclick="saveStatusItem()"
+              class="btn-purple flex-1 px-4 py-3 rounded-xl font-poppins font-semibold text-xs tracking-wider text-white uppercase flex items-center justify-center gap-2">
+              <i class="fa-solid fa-plus mr-2"></i>Add Status
+            </button>
+            <button id="cancelEditStatus" onclick="cancelStatusEdit()"
+              class="hidden btn-liquid px-4 py-3 rounded-xl font-poppins text-xs text-gray-400 uppercase">
+              Cancel
+            </button>
+          </div>
+        </div>
+
+        <!-- Status List -->
+        <div class="lg:col-span-3 glass-card rounded-2xl p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="font-bebas text-2xl text-white tracking-wider flex items-center gap-2">
+              <i class="fa-solid fa-chart-simple text-purple-400 text-lg"></i> Active Projects
+            </h2>
+            <button onclick="loadDashboardStatus()" class="btn-icon text-gray-500 hover:text-purple-300">
+              <i class="fa-solid fa-rotate-right text-xs"></i>
+            </button>
+          </div>
+          <div id="dashStatusList" class="flex flex-col gap-3 max-h-[600px] overflow-y-auto pr-1">
+            <div class="flex justify-center py-10"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8">
+      <div class="glass-card rounded-xl p-5 text-center">
+        <i class="fa-solid fa-images text-purple-400 mb-2 text-lg"></i>
+        <p class="font-bebas text-3xl text-white" id="statPortfolio">—</p>
+        <p class="font-mono text-xs text-gray-600 uppercase tracking-wider mt-1">Portfolio Items</p>
+      </div>
+      <div class="glass-card rounded-xl p-5 text-center">
+        <i class="fa-solid fa-chart-simple text-purple-400 mb-2 text-lg"></i>
+        <p class="font-bebas text-3xl text-white" id="statStatus">—</p>
+        <p class="font-mono text-xs text-gray-600 uppercase tracking-wider mt-1">Active Projects</p>
+      </div>
+      <div class="glass-card rounded-xl p-5 text-center">
+        <i class="fa-solid fa-fire text-orange-400 mb-2 text-lg"></i>
+        <p class="font-bebas text-3xl text-white">LIVE</p>
+        <p class="font-mono text-xs text-gray-600 uppercase tracking-wider mt-1">System Status</p>
+      </div>
+      <div class="glass-card rounded-xl p-5 text-center">
+        <i class="fa-brands fa-google text-blue-400 mb-2 text-lg"></i>
+        <p class="font-bebas text-3xl text-white">ADMIN</p>
+        <p class="font-mono text-xs text-gray-600 uppercase tracking-wider mt-1">Auth Mode</p>
+      </div>
+    </div>
+  </div>
+</div><!-- /dashboard -->
+
+<script>
+  // Update stats counts when dashboard loads
+  const origLoad = window.loadDashboardPortfolio;
+  document.addEventListener("DOMContentLoaded", () => {
+    // Patch stats after load
+    const patchStats = () => {
+      setTimeout(() => {
+        document.getElementById("statPortfolio").textContent = (window.portfolioItems||[]).length || "0";
+        document.getElementById("statStatus").textContent = (window.statusItems||[]).length || "0";
+      }, 1500);
+    };
+    // Patch mobile admin buttons to mirror desktop state
+    const syncMobileButtons = () => {
+      setInterval(() => {
+        const adminHidden = document.getElementById("adminBtn").classList.contains("hidden");
+        const adminBtnMob = document.getElementById("adminBtnMob");
+        const loginBtnMob = document.getElementById("loginBtnMob");
+        if (adminBtnMob) {
+          if (adminHidden) { adminBtnMob.classList.add("hidden"); loginBtnMob.classList.remove("hidden"); }
+          else { adminBtnMob.classList.remove("hidden"); loginBtnMob.classList.add("hidden"); }
+        }
+      }, 500);
+    };
+    patchStats();
+    syncMobileButtons();
+  });
+
+  // Close lightbox on escape
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeLightbox();
+  });
+</script>
+</body>
+</html>

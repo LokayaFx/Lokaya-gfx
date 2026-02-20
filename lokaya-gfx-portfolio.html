@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LOKAYA GFX — Free Fire Design Studio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            purple: {
+              neon: '#bf00ff',
+              mid: '#7b00cc',
+              dark: '#3d0066',
+              glow: '#d966ff',
+            }
+          },
+          fontFamily: {
+            orbitron: ['Orbitron', 'sans-serif'],
+            rajdhani: ['Rajdhani', 'sans-serif'],
+            mono: ['Space Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --neon: #bf00ff;
+      --glow: #d966ff;
+      --mid: #7b00cc;
+      --dark-bg: #050508;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background-color: var(--dark-bg);
+      font-family: 'Rajdhani', sans-serif;
+      color: #e0e0f0;
+      overflow-x: hidden;
+    }
+
+    /* Background radial gradient */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 10%, rgba(127,0,204,0.18) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 80%, rgba(191,0,255,0.12) 0%, transparent 55%),
+        radial-gradient(ellipse 40% 40% at 50% 50%, rgba(61,0,102,0.10) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Noise texture overlay */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.4;
+    }
+
+    section, nav, footer { position: relative; z-index: 1; }
+
+    /* GLASS MORPHISM */
+    .glass {
+      background: rgba(255,255,255,0.035);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(191,0,255,0.2);
+      box-shadow: 0 8px 32px rgba(191,0,255,0.08), inset 0 1px 0 rgba(255,255,255,0.07);
+    }
+
+    .glass-card {
+      background: rgba(255,255,255,0.03);
+      backdrop-filter: blur(24px) saturate(200%);
+      -webkit-backdrop-filter: blur(24px) saturate(200%);
+      border: 1px solid rgba(191,0,255,0.25);
+      box-shadow:
+        0 4px 24px rgba(191,0,255,0.1),
+        0 0 0 0.5px rgba(255,255,255,0.05) inset,
+        inset 0 1px 0 rgba(255,255,255,0.08);
+      transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+    }
+
+    .glass-card:hover {
+      border-color: rgba(191,0,255,0.6);
+      box-shadow:
+        0 8px 48px rgba(191,0,255,0.25),
+        0 0 20px rgba(191,0,255,0.15),
+        inset 0 1px 0 rgba(255,255,255,0.12);
+      transform: translateY(-6px) scale(1.02);
+    }
+
+    /* NEON TEXT */
+    .neon-text {
+      color: #fff;
+      text-shadow:
+        0 0 10px var(--neon),
+        0 0 30px var(--neon),
+        0 0 60px var(--mid),
+        0 0 100px var(--mid);
+    }
+
+    .neon-purple { color: var(--glow); }
+
+    /* LIQUID GLASS BUTTON */
+    .btn-liquid {
+      position: relative;
+      overflow: hidden;
+      background: rgba(191,0,255,0.12);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(191,0,255,0.5);
+      box-shadow:
+        0 0 20px rgba(191,0,255,0.3),
+        0 4px 20px rgba(0,0,0,0.4),
+        inset 0 1px 0 rgba(255,255,255,0.15),
+        inset 0 -1px 0 rgba(191,0,255,0.2);
+      transition: all 0.35s cubic-bezier(0.23, 1, 0.32, 1);
+    }
+
+    .btn-liquid::before {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .btn-liquid:hover::before { left: 100%; }
+
+    .btn-liquid:hover {
+      background: rgba(191,0,255,0.25);
+      border-color: rgba(217,102,255,0.8);
+      box-shadow:
+        0 0 40px rgba(191,0,255,0.5),
+        0 8px 32px rgba(0,0,0,0.4),
+        inset 0 1px 0 rgba(255,255,255,0.2);
+      transform: translateY(-2px);
+    }
+
+    /* NAVBAR */
+    .navbar {
+      background: rgba(5,5,8,0.7);
+      backdrop-filter: blur(30px) saturate(200%);
+      -webkit-backdrop-filter: blur(30px) saturate(200%);
+      border-bottom: 1px solid rgba(191,0,255,0.2);
+    }
+
+    /* HERO */
+    .hero-headline {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      line-height: 1.05;
+    }
+
+    /* PROGRESS BARS */
+    .progress-track {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(191,0,255,0.15);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, #7b00cc, #bf00ff, #d966ff);
+      box-shadow: 0 0 12px rgba(191,0,255,0.6), 0 0 4px rgba(217,102,255,0.8);
+      position: relative;
+      animation: fillBar 2s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+    }
+
+    .progress-fill::after {
+      content: '';
+      position: absolute;
+      right: 0; top: 0;
+      width: 20px; height: 100%;
+      background: rgba(255,255,255,0.3);
+      border-radius: 99px;
+      filter: blur(4px);
+    }
+
+    @keyframes fillBar {
+      from { width: 0; }
+    }
+
+    /* PRICING HIGHLIGHT */
+    .card-pro {
+      border-color: rgba(191,0,255,0.7) !important;
+      box-shadow:
+        0 0 30px rgba(191,0,255,0.3),
+        0 8px 48px rgba(191,0,255,0.15),
+        inset 0 1px 0 rgba(255,255,255,0.1) !important;
+    }
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #050508; }
+    ::-webkit-scrollbar-thumb { background: var(--mid); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--neon); }
+
+    /* FLOAT ANIMATION */
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+
+    .float { animation: float 4s ease-in-out infinite; }
+
+    /* PULSE GLOW */
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 20px rgba(191,0,255,0.4); }
+      50% { box-shadow: 0 0 40px rgba(191,0,255,0.8), 0 0 80px rgba(191,0,255,0.3); }
+    }
+
+    .pulse-glow { animation: pulseGlow 2.5s ease-in-out infinite; }
+
+    /* SCANLINE HERO */
+    .scanline {
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(191,0,255,0.015) 2px,
+        rgba(191,0,255,0.015) 4px
+      );
+      pointer-events: none;
+    }
+
+    /* GRID BADGE */
+    .badge {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      padding: 2px 8px;
+      border-radius: 3px;
+      background: rgba(191,0,255,0.15);
+      border: 1px solid rgba(191,0,255,0.4);
+      color: var(--glow);
+    }
+
+    /* GLOW DOT */
+    .glow-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--neon);
+      box-shadow: 0 0 6px var(--neon), 0 0 12px var(--neon);
+      animation: pulseGlow 1.5s ease-in-out infinite;
+    }
+
+    /* SECTION TITLE */
+    .section-tag {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--glow);
+      opacity: 0.7;
+    }
+
+    /* SHIMMER */
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    .shimmer-text {
+      background: linear-gradient(90deg, #fff 0%, var(--glow) 40%, #fff 60%, var(--glow) 100%);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 4s linear infinite;
+    }
+
+    /* MOBILE NAV */
+    #mobile-menu { display: none; }
+    #mobile-menu.open { display: flex; }
+
+    /* PORTFOLIO PLACEHOLDER IMAGES */
+    .portfolio-img {
+      width: 100%; aspect-ratio: 16/9;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== NAVBAR ===== -->
+<nav class="navbar fixed top-0 left-0 right-0 z-50">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6">
+    <div class="flex items-center justify-between h-16">
+
+      <!-- Logo -->
+      <a href="#" class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg glass flex items-center justify-center pulse-glow">
+          <i class="fa-solid fa-fire text-purple-400 text-sm"></i>
+        </div>
+        <span class="font-orbitron font-black text-white text-lg tracking-widest">LOKAYA<span class="text-purple-400">GFX</span></span>
+      </a>
+
+      <!-- Desktop Links -->
+      <div class="hidden md:flex items-center gap-8">
+        <a href="#armory" class="font-rajdhani font-semibold text-sm tracking-widest text-gray-400 hover:text-purple-300 transition-colors uppercase">Armory</a>
+        <a href="#vault" class="font-rajdhani font-semibold text-sm tracking-widest text-gray-400 hover:text-purple-300 transition-colors uppercase">The Vault</a>
+        <a href="#forge" class="font-rajdhani font-semibold text-sm tracking-widest text-gray-400 hover:text-purple-300 transition-colors uppercase">Forge</a>
+        <a href="#status" class="font-rajdhani font-semibold text-sm tracking-widest text-gray-400 hover:text-purple-300 transition-colors uppercase">Status</a>
+      </div>
+
+      <!-- CTA + Hamburger -->
+      <div class="flex items-center gap-3">
+        <a href="#contact" class="hidden md:flex btn-liquid px-5 py-2 rounded-lg font-orbitron font-bold text-xs tracking-widest text-purple-200 uppercase">
+          Contact
+        </a>
+        <button id="hamburger" class="md:hidden text-purple-300 text-xl" onclick="document.getElementById('mobile-menu').classList.toggle('open')">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Menu -->
+    <div id="mobile-menu" class="flex-col gap-4 pb-5 md:hidden">
+      <a href="#armory" class="font-rajdhani font-semibold tracking-widest text-gray-400 uppercase" onclick="document.getElementById('mobile-menu').classList.remove('open')">Armory</a>
+      <a href="#vault" class="font-rajdhani font-semibold tracking-widest text-gray-400 uppercase" onclick="document.getElementById('mobile-menu').classList.remove('open')">The Vault</a>
+      <a href="#forge" class="font-rajdhani font-semibold tracking-widest text-gray-400 uppercase" onclick="document.getElementById('mobile-menu').classList.remove('open')">Forge</a>
+      <a href="#status" class="font-rajdhani font-semibold tracking-widest text-gray-400 uppercase" onclick="document.getElementById('mobile-menu').classList.remove('open')">Status</a>
+      <a href="#contact" class="btn-liquid px-5 py-2 rounded-lg font-orbitron font-bold text-xs tracking-widest text-purple-200 uppercase text-center">Contact</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ===== HERO ===== -->
+<section class="relative min-h-screen flex items-center pt-16 overflow-hidden">
+  <div class="scanline"></div>
+
+  <!-- BG orbs -->
+  <div class="absolute top-20 left-1/4 w-96 h-96 rounded-full opacity-20 blur-3xl" style="background: radial-gradient(circle, #bf00ff, transparent)"></div>
+  <div class="absolute bottom-20 right-1/4 w-64 h-64 rounded-full opacity-10 blur-3xl" style="background: radial-gradient(circle, #7b00cc, transparent)"></div>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-20 grid md:grid-cols-2 gap-12 items-center">
+    <!-- Text -->
+    <div>
+      <p class="section-tag mb-5">⚡ Free Fire Design Studio</p>
+      <h1 class="hero-headline text-5xl sm:text-6xl lg:text-7xl mb-6">
+        <span class="block text-white">LEVEL UP</span>
+        <span class="block shimmer-text">YOUR</span>
+        <span class="block neon-text">IDENTITY</span>
+      </h1>
+      <p class="font-rajdhani text-lg text-gray-400 max-w-md mb-10 leading-relaxed">
+        Premium Free Fire logos, banners & overlays — crafted for squads that demand elite visual presence. No compromises. Only dominance.
+      </p>
+      <div class="flex flex-wrap gap-4 items-center">
+        <a href="https://lokayagfx.netlify.app/" target="_blank" class="btn-liquid px-8 py-4 rounded-xl font-orbitron font-black text-sm tracking-widest text-white uppercase flex items-center gap-2 pulse-glow">
+          🔥 GET FREE LOGOS
+        </a>
+        <a href="#armory" class="font-rajdhani font-semibold text-gray-400 hover:text-purple-300 transition-colors tracking-widest uppercase text-sm flex items-center gap-2">
+          View Armory <i class="fa-solid fa-arrow-right text-xs"></i>
+        </a>
+      </div>
+
+      <!-- Stats -->
+      <div class="grid grid-cols-3 gap-4 mt-14">
+        <div class="glass rounded-xl p-4 text-center">
+          <p class="font-orbitron font-black text-2xl neon-purple">500+</p>
+          <p class="font-rajdhani text-xs text-gray-500 uppercase tracking-widest mt-1">Designs</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center">
+          <p class="font-orbitron font-black text-2xl neon-purple">200+</p>
+          <p class="font-rajdhani text-xs text-gray-500 uppercase tracking-widest mt-1">Clients</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center">
+          <p class="font-orbitron font-black text-2xl neon-purple">4.9★</p>
+          <p class="font-rajdhani text-xs text-gray-500 uppercase tracking-widest mt-1">Rating</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hero Visual -->
+    <div class="relative flex justify-center items-center">
+      <div class="float">
+        <div class="glass rounded-2xl p-2 w-72 h-72 sm:w-80 sm:h-80 flex items-center justify-center relative overflow-hidden" style="background: rgba(191,0,255,0.06);">
+          <!-- Inner glow ring -->
+          <div class="absolute inset-0 rounded-2xl" style="background: radial-gradient(circle at 50% 30%, rgba(191,0,255,0.2), transparent 60%);"></div>
+          <!-- Icon -->
+          <div class="relative z-10 text-center">
+            <div class="text-9xl mb-4" style="filter: drop-shadow(0 0 30px #bf00ff) drop-shadow(0 0 60px #7b00cc);">🔥</div>
+            <p class="font-orbitron font-black text-lg tracking-widest text-white">LOKAYA GFX</p>
+            <p class="font-mono text-xs text-purple-400 mt-1 tracking-widest">ELITE DESIGN STUDIO</p>
+          </div>
+          <!-- Corner accents -->
+          <div class="absolute top-3 left-3 w-5 h-5 border-t border-l border-purple-500 rounded-tl"></div>
+          <div class="absolute top-3 right-3 w-5 h-5 border-t border-r border-purple-500 rounded-tr"></div>
+          <div class="absolute bottom-3 left-3 w-5 h-5 border-b border-l border-purple-500 rounded-bl"></div>
+          <div class="absolute bottom-3 right-3 w-5 h-5 border-b border-r border-purple-500 rounded-br"></div>
+        </div>
+      </div>
+      <!-- Orbiting dots -->
+      <div class="absolute w-96 h-96 sm:w-[420px] sm:h-[420px]" style="animation: spin 8s linear infinite;">
+        <div class="glow-dot absolute top-0 left-1/2 -translate-x-1/2"></div>
+      </div>
+      <div class="absolute w-96 h-96 sm:w-[420px] sm:h-[420px]" style="animation: spin 12s linear infinite reverse;">
+        <div class="glow-dot absolute bottom-0 right-0" style="background: #d966ff; box-shadow: 0 0 6px #d966ff, 0 0 12px #d966ff;"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ARMORY (PORTFOLIO) ===== -->
+<section id="armory" class="py-24 max-w-7xl mx-auto px-4 sm:px-6">
+  <div class="text-center mb-16">
+    <p class="section-tag mb-3">— Portfolio —</p>
+    <h2 class="font-orbitron font-black text-4xl sm:text-5xl text-white">THE <span class="shimmer-text">ARMORY</span></h2>
+    <p class="font-rajdhani text-gray-500 text-lg mt-3 tracking-wide">Weapons of visual warfare</p>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <!-- Card 1 -->
+    <div class="glass-card rounded-2xl overflow-hidden cursor-pointer">
+      <div class="portfolio-img" style="background: linear-gradient(135deg, #1a001a, #3d0066, #0a000f); color: rgba(191,0,255,0.5);">
+        <div class="text-center">
+          <div class="text-5xl mb-3">💀</div>
+          <p style="color: #bf00ff; font-size: 0.8rem; letter-spacing: 0.2em;">SQUAD LOGO</p>
+        </div>
+      </div>
+      <div class="p-5">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-orbitron font-bold text-white text-sm tracking-wide">SKULL SQUAD</h3>
+          <span class="badge">LOGO</span>
+        </div>
+        <p class="font-rajdhani text-gray-500 text-sm">Elite squad branding with dark skull motif and neon accents.</p>
+      </div>
+    </div>
+
+    <!-- Card 2 -->
+    <div class="glass-card rounded-2xl overflow-hidden cursor-pointer">
+      <div class="portfolio-img" style="background: linear-gradient(135deg, #000d1a, #001a3d, #000510); color: rgba(0,120,255,0.5);">
+        <div class="text-center">
+          <div class="text-5xl mb-3">⚡</div>
+          <p style="color: #00aaff; font-size: 0.8rem; letter-spacing: 0.2em;">BANNER DESIGN</p>
+        </div>
+      </div>
+      <div class="p-5">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-orbitron font-bold text-white text-sm tracking-wide">THUNDER GUILD</h3>
+          <span class="badge">BANNER</span>
+        </div>
+        <p class="font-rajdhani text-gray-500 text-sm">YouTube channel banner with electric blue lightning effects.</p>
+      </div>
+    </div>
+
+    <!-- Card 3 -->
+    <div class="glass-card rounded-2xl overflow-hidden cursor-pointer">
+      <div class="portfolio-img" style="background: linear-gradient(135deg, #1a0a00, #3d1a00, #0f0800); color: rgba(255,100,0,0.5);">
+        <div class="text-center">
+          <div class="text-5xl mb-3">🔥</div>
+          <p style="color: #ff6600; font-size: 0.8rem; letter-spacing: 0.2em;">CLAN TAG</p>
+        </div>
+      </div>
+      <div class="p-5">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-orbitron font-bold text-white text-sm tracking-wide">INFERNO CLAN</h3>
+          <span class="badge">CLAN</span>
+        </div>
+        <p class="font-rajdhani text-gray-500 text-sm">Fire-themed clan identity with molten glow overlays.</p>
+      </div>
+    </div>
+
+    <!-- Card 4 -->
+    <div class="glass-card rounded-2xl overflow-hidden cursor-pointer">
+      <div class="portfolio-img" style="background: linear-gradient(135deg, #0d001a, #200033, #080010); color: rgba(191,0,255,0.4);">
+        <div class="text-center">
+          <div class="text-5xl mb-3">👑</div>
+          <p style="color: #d966ff; font-size: 0.8rem; letter-spacing: 0.2em;">THUMBNAIL</p>
+        </div>
+      </div>
+      <div class="p-5">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-orbitron font-bold text-white text-sm tracking-wide">ROYAL WRAITH</h3>
+          <span class="badge">THUMB</span>
+        </div>
+        <p class="font-rajdhani text-gray-500 text-sm">YouTube thumbnail with dramatic purple crown and glitch effects.</p>
+      </div>
+    </div>
+
+    <!-- Card 5 -->
+    <div class="glass-card rounded-2xl overflow-hidden cursor-pointer">
+      <div class="portfolio-img" style="background: linear-gradient(135deg, #001a0d, #003320, #000d07); color: rgba(0,255,120,0.4);">
+        <div class="text-center">
+          <div class="text-5xl mb-3">🐉</div>
+          <p style="color: #00ff88; font-size: 0.8rem; letter-spacing: 0.2em;">OVERLAY PACK</p>
+        </div>
+      </div>
+      <div class="p-5">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-orbitron font-bold text-white text-sm tracking-wide">DRAGON GUILD</h3>
+          <span class="badge">OVERLAY</span>
+        </div>
+        <p class="font-rajdhani text-gray-500 text-sm">Stream overlay pack with animated dragon border and alerts.</p>
+      </div>
+    </div>
+
+    <!-- Card 6 -->
+    <div class="glass-card rounded-2xl overflow-hidden cursor-pointer">
+      <div class="portfolio-img" style="background: linear-gradient(135deg, #1a001a, #3d0066, #0a000f); color: rgba(191,0,255,0.4);">
+        <div class="text-center">
+          <div class="text-5xl mb-3">🎯</div>
+          <p style="color: #bf00ff; font-size: 0.8rem; letter-spacing: 0.2em;">PROFILE KIT</p>
+        </div>
+      </div>
+      <div class="p-5">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-orbitron font-bold text-white text-sm tracking-wide">PHANTOM UNIT</h3>
+          <span class="badge">KIT</span>
+        </div>
+        <p class="font-rajdhani text-gray-500 text-sm">Full social media profile kit with matching avatar and banner.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="text-center mt-12">
+    <a href="https://lokayagfx.netlify.app/" target="_blank" class="btn-liquid px-8 py-3 rounded-xl font-orbitron font-bold text-sm tracking-widest text-purple-200 uppercase inline-flex items-center gap-2">
+      <i class="fa-solid fa-eye"></i> VIEW ALL WORK
+    </a>
+  </div>
+</section>
+
+<!-- ===== THE VAULT ===== -->
+<section id="vault" class="py-24 relative overflow-hidden">
+  <!-- BG accent -->
+  <div class="absolute inset-0 opacity-5" style="background: radial-gradient(ellipse 60% 60% at 50% 50%, #bf00ff, transparent);"></div>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 relative">
+    <div class="text-center mb-16">
+      <p class="section-tag mb-3">— Free Resources —</p>
+      <h2 class="font-orbitron font-black text-4xl sm:text-5xl text-white">THE <span class="shimmer-text">VAULT</span></h2>
+      <p class="font-rajdhani text-gray-500 text-lg mt-3 tracking-wide">Editor's Hub — Free assets for the community</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+      <!-- Resource 1 -->
+      <div class="glass-card rounded-2xl p-6 flex flex-col gap-4">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style="background: rgba(191,0,255,0.15); border: 1px solid rgba(191,0,255,0.3);">
+          💎
+        </div>
+        <div>
+          <h3 class="font-orbitron font-bold text-white text-sm tracking-wide mb-1">PNG PACK #01</h3>
+          <p class="font-rajdhani text-gray-500 text-sm">50+ Free Fire character PNGs with transparent backgrounds. HD quality.</p>
+        </div>
+        <div class="flex items-center justify-between mt-auto">
+          <span class="font-mono text-xs text-purple-400">50 FILES • 240MB</span>
+          <a href="#" class="btn-liquid px-4 py-2 rounded-lg font-orbitron font-bold text-xs tracking-widest text-purple-200 uppercase flex items-center gap-1">
+            <i class="fa-solid fa-download"></i> FREE
+          </a>
+        </div>
+      </div>
+
+      <!-- Resource 2 -->
+      <div class="glass-card rounded-2xl p-6 flex flex-col gap-4">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style="background: rgba(191,0,255,0.15); border: 1px solid rgba(191,0,255,0.3);">
+          🎬
+        </div>
+        <div>
+          <h3 class="font-orbitron font-bold text-white text-sm tracking-wide mb-1">STREAM OVERLAYS</h3>
+          <p class="font-rajdhani text-gray-500 text-sm">10 animated stream overlay templates. OBS & Streamlabs ready.</p>
+        </div>
+        <div class="flex items-center justify-between mt-auto">
+          <span class="font-mono text-xs text-purple-400">10 FILES • 85MB</span>
+          <a href="#" class="btn-liquid px-4 py-2 rounded-lg font-orbitron font-bold text-xs tracking-widest text-purple-200 uppercase flex items-center gap-1">
+            <i class="fa-solid fa-download"></i> FREE
+          </a>
+        </div>
+      </div>
+
+      <!-- Resource 3 -->
+      <div class="glass-card rounded-2xl p-6 flex flex-col gap-4">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style="background: rgba(191,0,255,0.15); border: 1px solid rgba(191,0,255,0.3);">
+          🎨
+        </div>
+        <div>
+          <h3 class="font-orbitron font-bold text-white text-sm tracking-wide mb-1">FONT PACK</h3>
+          <p class="font-rajdhani text-gray-500 text-sm">Gaming-style fonts curated for FF thumbnails and banners.</p>
+        </div>
+        <div class="flex items-center justify-between mt-auto">
+          <span class="font-mono text-xs text-purple-400">20 FONTS • 12MB</span>
+          <a href="#" class="btn-liquid px-4 py-2 rounded-lg font-orbitron font-bold text-xs tracking-widest text-purple-200 uppercase flex items-center gap-1">
+            <i class="fa-solid fa-download"></i> FREE
+          </a>
+        </div>
+      </div>
+
+      <!-- Resource 4 -->
+      <div class="glass-card rounded-2xl p-6 flex flex-col gap-4">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style="background: rgba(191,0,255,0.15); border: 1px solid rgba(191,0,255,0.3);">
+          🌟
+        </div>
+        <div>
+          <h3 class="font-orbitron font-bold text-white text-sm tracking-wide mb-1">EFFECTS PACK</h3>
+          <p class="font-rajdhani text-gray-500 text-sm">Glitch, fire, smoke and lightning effects PNG overlays.</p>
+        </div>
+        <div class="flex items-center justify-between mt-auto">
+          <span class="font-mono text-xs text-purple-400">80 FILES • 320MB</span>
+          <a href="#" class="btn-liquid px-4 py-2 rounded-lg font-orbitron font-bold text-xs tracking-widest text-purple-200 uppercase flex items-center gap-1">
+            <i class="fa-solid fa-download"></i> FREE
+          </a>
+        </div>
+      </div>
+
+      <!-- Resource 5 -->
+      <div class="glass-card rounded-2xl p-6 flex flex-col gap-4">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style="background: rgba(191,0,255,0.15); border: 1px solid rgba(191,0,255,0.3);">
+          🖼️
+        </div>
+        <div>
+          <h3 class="font-orbitron font-bold text-white text-sm tracking-wide mb-1">BACKGROUND PACK</h3>
+          <p class="font-rajdhani text-gray-500 text-sm">Dark cinematic backgrounds for thumbnails and streams. 4K.</p>
+        </div>
+        <div class="flex items-center justify-between mt-auto">
+          <span class="font-mono text-xs text-purple-400">30 FILES • 450MB</span>
+          <a href="#" class="btn-liquid px-4 py-2 rounded-lg font-orbitron font-bold text-xs tracking-widest text-purple-200 uppercase flex items-center gap-1">
+            <i class="fa-solid fa-download"></i> FREE
+          </a>
+        </div>
+      </div>
+
+      <!-- Resource 6 -->
+      <div class="glass-card rounded-2xl p-6 flex flex-col gap-4">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style="background: rgba(191,0,255,0.15); border: 1px solid rgba(191,0,255,0.3);">
+          📦
+        </div>
+        <div>
+          <h3 class="font-orbitron font-bold text-white text-sm tracking-wide mb-1">MEGA BUNDLE</h3>
+          <p class="font-rajdhani text-gray-500 text-sm">All packs combined. Everything you need to start creating. Once a month.</p>
+        </div>
+        <div class="flex items-center justify-between mt-auto">
+          <span class="font-mono text-xs text-purple-400">230+ FILES</span>
+          <a href="#" class="btn-liquid px-4 py-2 rounded-lg font-orbitron font-bold text-xs tracking-widest text-purple-200 uppercase flex items-center gap-1 pulse-glow">
+            <i class="fa-solid fa-star"></i> GET ALL
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ===== FORGE (PRICING) ===== -->
+<section id="forge" class="py-24 max-w-7xl mx-auto px-4 sm:px-6">
+  <div class="text-center mb-16">
+    <p class="section-tag mb-3">— Pricing —</p>
+    <h2 class="font-orbitron font-black text-4xl sm:text-5xl text-white">THE <span class="shimmer-text">FORGE</span></h2>
+    <p class="font-rajdhani text-gray-500 text-lg mt-3 tracking-wide">Choose your tier. Dominate your battlefield.</p>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+
+    <!-- STARTER -->
+    <div class="glass-card rounded-2xl p-8 flex flex-col">
+      <div class="mb-6">
+        <p class="font-mono text-xs tracking-widest text-gray-500 uppercase mb-2">Tier I</p>
+        <h3 class="font-orbitron font-black text-2xl text-white">STARTER</h3>
+        <p class="font-rajdhani text-gray-500 text-sm mt-2">For new squads entering the arena.</p>
+      </div>
+      <div class="mb-8">
+        <span class="font-orbitron font-black text-4xl text-white">₹99</span>
+        <span class="font-rajdhani text-gray-500 text-sm ml-2">/ design</span>
+      </div>
+      <ul class="flex flex-col gap-3 mb-10 flex-1">
+        <li class="flex items-center gap-3 font-rajdhani text-gray-400 text-sm"><i class="fa-solid fa-check text-purple-500 text-xs"></i> 1 Logo Design</li>
+        <li class="flex items-center gap-3 font-rajdhani text-gray-400 text-sm"><i class="fa-solid fa-check text-purple-500 text-xs"></i> PNG + JPG Delivery</li>
+        <li class="flex items-center gap-3 font-rajdhani text-gray-400 text-sm"><i class="fa-solid fa-check text-purple-500 text-xs"></i> 1 Revision</li>
+        <li class="flex items-center gap-3 font-rajdhani text-gray-400 text-sm"><i class="fa-solid fa-check text-purple-500 text-xs"></i> 48hr Delivery</li>
+        <li class="flex items-center gap-3 font-rajdhani text-gray-300 text-sm opacity-30"><i class="fa-solid fa-xmark text-red-500 text-xs"></i> Source File</li>
+        <li class="flex items-center gap-3 font-rajdhani text-gray-300 text-sm opacity-30"><i class="fa-solid fa-xmark text-red-500 text-xs"></i> Priority Support</li>
+      </ul>
+      <a href="#contact" class="btn-liquid py-3 px-6 rounded-xl font-orbitron font-bold text-xs tracking-widest text-purple-200 uppercase text-center">
+        GET STARTED
+      </a>
+    </div>
+
+    <!-- PRO (Highlighted) -->
+    <div class="glass-card card-pro rounded-2xl p-8 flex flex-col relative">
+      <!-- Badge -->
+      <div class="absolute -top-3 left-1/2 -translate-x-1/2">
+        <span class="font-orbitron font-black text-xs tracking-widest px-4 py-1 rounded-full" style="background: linear-gradient(90deg, #7b00cc, #bf00ff); color: white; box-shadow: 0 0 16px rgba(191,0,255,0.6);">POPULAR</span>
+      </div>
+      <div class="mb-6 mt-2">
+        <p class="font-mono text-xs tracking-widest text-purple-400 uppercase mb-2">Tier II</p>
+        <h3 class="font-orbitron font-black text-2xl neon-purple">PRO</h3>
+        <p class="font-rajdhani text-gray-400 text-sm mt-2">For serious players building their brand.</p>
+      </div>
+      <div class="mb-8">
+        <span class="font-orbitron font-black text-4xl text-white">₹249</span>
+        <span class="font-rajdhani text-gray-500 text-sm ml-2">/ design</span>
+      </div>
+      <ul class="flex flex-col gap-3 mb-10 flex-1">
+        <li class="flex items-center gap-3 font-rajdhani text-gray-300 text-sm"><i class="fa-solid fa-check text-purple-400 text-xs"></i> Full Branding Kit</li>
+        <li class="flex items-center gap-3 font-rajdhani text-gray-300 text-sm"><i class="fa-solid fa-check text-purple-400 text-xs"></i> PNG + PSD Source</li>
+        <li class="flex items-center gap-3 font-rajdhani text-gray-300 text-sm"><i class="fa-solid fa-check text-purple-400 text-xs"></i> 3 Revisions</li>
+        <li class="flex items-center gap-3 font-rajdhani text-gray-300 text-sm"><i class="fa-solid fa-check text-purple-400 text-xs"></i> 24hr Delivery</li>
+        <li class="flex items-center gap-3 font-rajdhani text-gray-300 text-sm"><i class="fa-solid fa-check text-purple-400 text-xs"></i> Banner + Avatar</li>
+        <li class="flex items-center gap-3 font-rajdhani text-gray-300 text-sm"><i class="fa-solid fa-check text-purple-400 text-xs"></i> Priority WhatsApp</li>
+      </ul>
+      <a href="#contact" class="py-3 px-6 rounded-xl font-orbitron font-bold text-xs tracking-widest text-white uppercase text-center pulse-glow" style="background: linear-gradient(90deg, #7b00cc, #bf00ff); box-shadow: 0 4px 24px rgba(191,0,255,0.4);">
+        🔥 GET PRO
+      </a>
+    </div>
+
+    <!-- ELITE -->
+    <div class="glass-card rounded-2xl p-8 flex flex-col">
+      <div class="mb-6">
+        <p class="font-mono text-xs tracking-widest text-gray-500 uppercase mb-2">Tier III</p>
+        <h3 class="font-orbitron font-black text-2xl text-white">ELITE</h3>
+        <p class="font-rajdhani text-gray-500 text-sm mt-2">For guilds demanding total visual domination.</p>
+      </div>
+      <div class="mb-8">
+        <span class="font-orbitron font-black text-4xl text-white">₹499</span>
+        <span class="font-rajdhani text-gray-500 text-sm ml-2">/ project</span>
+      </div>
+      <ul class="flex flex-col gap-3 mb-10 flex-1">
+        <li class="flex items-center gap-3 font-rajdhani text-gray-400 text-sm"><i class="fa-solid fa-check text-purple-500 text-xs"></i> Complete Guild Pack</li>
+        <li class="flex items-center gap-3 font-rajdhani text-gray-400 text-sm"><i class="fa-solid fa-check text-purple-500 text-xs"></i> All Source Files</li>
+        <li class="flex items-center gap-3 font-rajdhani text-gray-400 text-sm"><i class="fa-solid fa-check text-purple-500 text-xs"></i> Unlimited Revisions</li>
+        <li class="flex items-center gap-3 font-rajdhani text-gray-400 text-sm"><i class="fa-solid fa-check text-purple-500 text-xs"></i> 12hr Rush Delivery</li>
+        <li class="flex items-center gap-3 font-rajdhani text-gray-400 text-sm"><i class="fa-solid fa-check text-purple-500 text-xs"></i> Stream Overlays</li>
+        <li class="flex items-center gap-3 font-rajdhani text-gray-400 text-sm"><i class="fa-solid fa-check text-purple-500 text-xs"></i> 30-Day Aftercare</li>
+      </ul>
+      <a href="#contact" class="btn-liquid py-3 px-6 rounded-xl font-orbitron font-bold text-xs tracking-widest text-purple-200 uppercase text-center">
+        GO ELITE 👑
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== LIVE STATUS TRACKER ===== -->
+<section id="status" class="py-24 relative">
+  <div class="absolute inset-0 opacity-5" style="background: radial-gradient(ellipse 50% 80% at 80% 50%, #bf00ff, transparent);"></div>
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 relative">
+    <div class="text-center mb-16">
+      <p class="section-tag mb-3">— Live Updates —</p>
+      <h2 class="font-orbitron font-black text-4xl sm:text-5xl text-white">ACTIVE <span class="shimmer-text">PROJECTS</span></h2>
+      <p class="font-rajdhani text-gray-500 text-lg mt-3 tracking-wide">Real-time status of ongoing missions</p>
+    </div>
+
+    <div class="glass-card rounded-2xl p-8 flex flex-col gap-8">
+
+      <!-- Status Header -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="glow-dot"></div>
+          <span class="font-mono text-xs text-purple-400 uppercase tracking-widest">SYSTEM ONLINE</span>
+        </div>
+        <span class="badge">5 ACTIVE</span>
+      </div>
+
+      <!-- Project 1 -->
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="font-orbitron font-bold text-white text-sm">INFERNO CLAN LOGO</p>
+            <p class="font-mono text-xs text-gray-500 mt-0.5">Client: @GarenFire_YT</p>
+          </div>
+          <span class="font-orbitron font-bold text-purple-400 text-sm">85%</span>
+        </div>
+        <div class="progress-track h-3">
+          <div class="progress-fill" style="width: 85%;"></div>
+        </div>
+      </div>
+
+      <!-- Project 2 -->
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="font-orbitron font-bold text-white text-sm">SQUAD BANNER PACK</p>
+            <p class="font-mono text-xs text-gray-500 mt-0.5">Client: @ShadowGuild_FF</p>
+          </div>
+          <span class="font-orbitron font-bold text-purple-400 text-sm">60%</span>
+        </div>
+        <div class="progress-track h-3">
+          <div class="progress-fill" style="width: 60%; animation-delay: 0.3s;"></div>
+        </div>
+      </div>
+
+      <!-- Project 3 -->
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="font-orbitron font-bold text-white text-sm">STREAM OVERLAY KIT</p>
+            <p class="font-mono text-xs text-gray-500 mt-0.5">Client: @PhantomStreamer</p>
+          </div>
+          <span class="font-orbitron font-bold text-purple-400 text-sm">40%</span>
+        </div>
+        <div class="progress-track h-3">
+          <div class="progress-fill" style="width: 40%; animation-delay: 0.6s;"></div>
+        </div>
+      </div>
+
+      <!-- Project 4 -->
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="font-orbitron font-bold text-white text-sm">GUILD IDENTITY PACK</p>
+            <p class="font-mono text-xs text-gray-500 mt-0.5">Client: @VoidGuild_FF</p>
+          </div>
+          <span class="font-orbitron font-bold text-purple-400 text-sm">20%</span>
+        </div>
+        <div class="progress-track h-3">
+          <div class="progress-fill" style="width: 20%; animation-delay: 0.9s;"></div>
+        </div>
+      </div>
+
+      <!-- Project 5 -->
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="font-orbitron font-bold text-white text-sm">THUMBNAIL SERIES</p>
+            <p class="font-mono text-xs text-gray-500 mt-0.5">Client: @BlazeKing_YT</p>
+          </div>
+          <span class="font-orbitron font-bold text-purple-400 text-sm">95%</span>
+        </div>
+        <div class="progress-track h-3">
+          <div class="progress-fill" style="width: 95%; animation-delay: 1.2s;"></div>
+        </div>
+      </div>
+
+      <!-- Queue Info -->
+      <div class="grid grid-cols-3 gap-4 pt-4 border-t border-purple-900/40">
+        <div class="text-center">
+          <p class="font-orbitron font-black text-xl text-white">5</p>
+          <p class="font-mono text-xs text-gray-500 uppercase tracking-wider mt-1">In Queue</p>
+        </div>
+        <div class="text-center">
+          <p class="font-orbitron font-black text-xl neon-purple">3</p>
+          <p class="font-mono text-xs text-gray-500 uppercase tracking-wider mt-1">Slots Open</p>
+        </div>
+        <div class="text-center">
+          <p class="font-orbitron font-black text-xl text-white">~36h</p>
+          <p class="font-mono text-xs text-gray-500 uppercase tracking-wider mt-1">Avg. Time</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CONTACT CTA ===== -->
+<section id="contact" class="py-24 max-w-4xl mx-auto px-4 sm:px-6 text-center">
+  <p class="section-tag mb-4">— Get In Touch —</p>
+  <h2 class="font-orbitron font-black text-4xl sm:text-5xl text-white mb-4">READY TO <span class="shimmer-text">DOMINATE?</span></h2>
+  <p class="font-rajdhani text-gray-500 text-lg mb-10 max-w-lg mx-auto">Drop a message and let's build your squad's identity. Only 3 slots remaining this week.</p>
+
+  <div class="glass rounded-2xl p-8 sm:p-12 max-w-2xl mx-auto">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+      <div class="glass rounded-xl p-4">
+        <label class="font-mono text-xs text-purple-400 uppercase tracking-widest block mb-2">Your Name</label>
+        <input type="text" placeholder="Squad Leader" class="w-full bg-transparent font-rajdhani text-white placeholder-gray-600 outline-none text-base"/>
+      </div>
+      <div class="glass rounded-xl p-4">
+        <label class="font-mono text-xs text-purple-400 uppercase tracking-widest block mb-2">Game ID</label>
+        <input type="text" placeholder="Free Fire UID" class="w-full bg-transparent font-rajdhani text-white placeholder-gray-600 outline-none text-base"/>
+      </div>
+    </div>
+    <div class="glass rounded-xl p-4 mb-6">
+      <label class="font-mono text-xs text-purple-400 uppercase tracking-widest block mb-2">Your Vision</label>
+      <textarea placeholder="Describe your logo, clan name, color preferences..." class="w-full bg-transparent font-rajdhani text-white placeholder-gray-600 outline-none text-base resize-none h-24"></textarea>
+    </div>
+    <button class="btn-liquid w-full py-4 rounded-xl font-orbitron font-black text-sm tracking-widest text-white uppercase pulse-glow">
+      🔥 SEND MISSION BRIEF
+    </button>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer class="border-t border-purple-900/30 py-12 px-4 sm:px-6">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-8">
+
+      <!-- Brand -->
+      <div class="text-center sm:text-left">
+        <div class="flex items-center gap-2 justify-center sm:justify-start mb-2">
+          <i class="fa-solid fa-fire text-purple-500"></i>
+          <span class="font-orbitron font-black text-white text-lg tracking-widest">LOKAYA<span class="text-purple-400">GFX</span></span>
+        </div>
+        <p class="font-rajdhani text-gray-600 text-sm">Crafting elite Free Fire identities since 2022</p>
+        <p class="font-mono text-xs text-purple-900 mt-1 tracking-widest">© 2024 LOKAYAGFX. ALL RIGHTS RESERVED.</p>
+      </div>
+
+      <!-- Social Links -->
+      <div class="flex items-center gap-4">
+        <!-- WhatsApp -->
+        <a href="https://wa.me/your-number" target="_blank" 
+           class="w-12 h-12 glass-card rounded-xl flex items-center justify-center group transition-all duration-300 hover:border-green-500"
+           style="--hover-color: rgba(37,211,102,0.3);">
+          <i class="fa-brands fa-whatsapp text-xl text-green-400 group-hover:drop-shadow-[0_0_8px_rgba(37,211,102,0.8)] transition-all"></i>
+        </a>
+
+        <!-- Discord -->
+        <a href="https://discord.gg/your-server" target="_blank"
+           class="w-12 h-12 glass-card rounded-xl flex items-center justify-center group transition-all duration-300 hover:border-indigo-500">
+          <i class="fa-brands fa-discord text-xl text-indigo-400 group-hover:drop-shadow-[0_0_8px_rgba(99,102,241,0.8)] transition-all"></i>
+        </a>
+
+        <!-- Instagram -->
+        <a href="#" target="_blank"
+           class="w-12 h-12 glass-card rounded-xl flex items-center justify-center group transition-all duration-300">
+          <i class="fa-brands fa-instagram text-xl text-pink-400 group-hover:drop-shadow-[0_0_8px_rgba(236,72,153,0.8)] transition-all"></i>
+        </a>
+
+        <!-- YouTube -->
+        <a href="#" target="_blank"
+           class="w-12 h-12 glass-card rounded-xl flex items-center justify-center group transition-all duration-300 hover:border-red-500">
+          <i class="fa-brands fa-youtube text-xl text-red-500 group-hover:drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] transition-all"></i>
+        </a>
+      </div>
+    </div>
+
+    <!-- Bottom bar -->
+    <div class="mt-10 pt-6 border-t border-purple-900/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-6">
+        <a href="#armory" class="font-mono text-xs text-gray-600 hover:text-purple-400 transition-colors uppercase tracking-widest">Armory</a>
+        <a href="#vault" class="font-mono text-xs text-gray-600 hover:text-purple-400 transition-colors uppercase tracking-widest">Vault</a>
+        <a href="#forge" class="font-mono text-xs text-gray-600 hover:text-purple-400 transition-colors uppercase tracking-widest">Forge</a>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="glow-dot w-2 h-2"></div>
+        <span class="font-mono text-xs text-purple-500 tracking-widest">SLOTS OPEN — ORDER NOW</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<style>
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+</style>
+
+</body>
+</html>

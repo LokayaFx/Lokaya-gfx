@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>LOKAYA GFX \u2014 Elite Design Studio</title>
+  <title>LOKAYA GFX — Elite Design Studio</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@300;400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
@@ -35,7 +35,7 @@
     let portfolioItems = [];
     let statusItems = [];
 
-    // \u2500\u2500\u2500 AUTH \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    // ─── AUTH ───────────────────────────────────────────────────────────────
     window.loginWithGoogle = async () => {
       try {
         const result = await signInWithPopup(auth, provider);
@@ -70,7 +70,7 @@
       }
     });
 
-    // \u2500\u2500\u2500 VIEWS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    // ─── VIEWS ──────────────────────────────────────────────────────────────
     window.showView = (view) => {
       document.querySelectorAll(".view").forEach(v => v.classList.remove("active-view"));
       document.getElementById(view).classList.add("active-view");
@@ -94,7 +94,7 @@
       document.getElementById("tab-" + sec).classList.add("tab-active");
     };
 
-    // \u2500\u2500\u2500 PORTFOLIO \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    // ─── PORTFOLIO ───────────────────────────────────────────────────────────
     async function fetchPortfolio() {
       const q = query(collection(db, "portfolio"), orderBy("createdAt", "desc"));
       const snap = await getDocs(q);
@@ -215,7 +215,7 @@
       } catch (e) { showToast("Error: " + e.message, "error"); }
     };
 
-    // \u2500\u2500\u2500 STATUS TRACKER \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    // ─── STATUS TRACKER ───────────────────────────────────────────────────────
     const PROGRESS_LABELS = { 10: "Starting", 25: "In Progress", 50: "Halfway", 75: "Almost Done", 100: "Complete" };
 
     async function fetchStatus() {
@@ -346,7 +346,7 @@
       } catch (e) { showToast("Error: " + e.message, "error"); }
     };
 
-    // \u2500\u2500\u2500 LIGHTBOX \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    // ─── LIGHTBOX ────────────────────────────────────────────────────────────
     window.openLightbox = (src, title, desc) => {
       document.getElementById("lbImg").src = src;
       document.getElementById("lbTitle").textContent = title;
@@ -361,6 +361,78 @@
       document.body.style.overflow = "";
     };
 
-    // \u2500\u2500\u2500 HELPERS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    // ─── HELPERS ─────────────────────────────────────────────────────────────
     function showToast(msg, type = "info") {
-      const
+      const t = document.getElementById("toast");
+      const colors = { success: "border-green-500 text-green-300", error: "border-red-500 text-red-300", info: "border-purple-500 text-purple-300" };
+      t.className = `toast-base glass border ${colors[type]}`;
+      t.querySelector("#toastMsg").textContent = msg;
+      t.classList.remove("toast-hidden");
+      t.classList.add("toast-show");
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => {
+        t.classList.remove("toast-show");
+        t.classList.add("toast-hidden");
+      }, 3500);
+    }
+
+    function setBtnLoading(btnId, loading) {
+      const btn = document.getElementById(btnId);
+      btn.disabled = loading;
+      btn.style.opacity = loading ? "0.6" : "1";
+    }
+
+    function escHtml(str) { return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+    function escAttr(str) { return String(str).replace(/'/g,"&#39;").replace(/"/g,"&quot;"); }
+
+    // ─── INIT ────────────────────────────────────────────────────────────────
+    document.addEventListener("DOMContentLoaded", () => {
+      showView("public");
+    });
+  </script>
+
+  <style>
+    :root {
+      --neon: #bf00ff;
+      --glow: #d966ff;
+      --mid: #7b00cc;
+      --bg: #060609;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background-color: var(--bg);
+      font-family: 'Poppins', sans-serif;
+      color: #e0d8f0;
+      overflow-x: hidden;
+    }
+
+    /* Ambient background */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 15% 5%, rgba(123,0,204,0.15) 0%, transparent 55%),
+        radial-gradient(ellipse 60% 40% at 85% 90%, rgba(191,0,255,0.1) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+      pointer-events: none; opacity: 0.5;
+    }
+
+    /* Font aliases */
+    .font-bebas { font-family: 'Bebas Neue', sans-serif; }
+    .font-poppins { font-family: 'Poppins', sans-serif; }
+    .font-mono { font-family: 'DM Mono', monospace; }
+
+    /* Glass morphism */
+    .glass {
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-b

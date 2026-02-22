@@ -8,95 +8,254 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@300;400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 
+  <!-- ═══════════════════════════════════════════════════════════
+       FIREBASE + APP LOGIC
+  ════════════════════════════════════════════════════════════════ -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
-      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, serverTimestamp }
-      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { initializeApp }
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import {
+      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import {
+      getFirestore, collection, addDoc, getDocs, getDoc,
+      deleteDoc, doc, setDoc, updateDoc, query,
+      orderBy, where, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+    /* ── CONFIG ─────────────────────────────────────────────── */
     const firebaseConfig = {
-      apiKey: "AIzaSyBBsP0-ODrStB6QOdlzQVpcR-k20mhhSZY",
-      authDomain: "lokayafx-ef19a.firebaseapp.com",
-      projectId: "lokayafx-ef19a",
-      storageBucket: "lokayafx-ef19a.firebasestorage.app",
+      apiKey:            "AIzaSyBBsP0-ODrStB6QOdlzQVpcR-k20mhhSZY",
+      authDomain:        "lokayafx-ef19a.firebaseapp.com",
+      projectId:         "lokayafx-ef19a",
+      storageBucket:     "lokayafx-ef19a.firebasestorage.app",
       messagingSenderId: "546398827272",
-      appId: "1:546398827272:web:ea0848652769622591b2bd"
+      appId:             "1:546398827272:web:ea0848652769622591b2bd"
     };
-
     const ADMIN_EMAIL = "itzlokaya@gmail.com";
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+    const app      = initializeApp(firebaseConfig);
+    const auth     = getAuth(app);
+    const db       = getFirestore(app);
     const provider = new GoogleAuthProvider();
 
-    let currentUser = null;
+    let currentUser    = null;
     let portfolioItems = [];
-    let statusItems = [];
+    let statusItems    = [];
 
-    // ─── AUTH ───────────────────────────────────────────────────────────────
+    /* ══════════════════════════════════════════════════════════
+       AUTH
+    ═══════════════════════════════════════════════════════════ */
     window.loginWithGoogle = async () => {
       try {
-        const result = await signInWithPopup(auth, provider);
-        if (result.user.email !== ADMIN_EMAIL) {
-          await signOut(auth);
-          showToast("Access denied. Admin only.", "error");
-        }
+        await signInWithPopup(auth, provider);
+        // onAuthStateChanged handles everything after login
       } catch (e) {
-        showToast("Login failed: " + e.message, "error");
+        if (e.code !== "auth/popup-closed-by-user")
+          showToast("Login failed: " + e.message, "error");
       }
     };
 
     window.logoutUser = async () => {
       await signOut(auth);
       showView("public");
-      showToast("Signed out successfully.", "info");
+      showToast("Signed out. See you next time! 👋", "info");
     };
 
-    onAuthStateChanged(auth, user => {
-      currentUser = user;
-      if (user && user.email === ADMIN_EMAIL) {
-        document.getElementById("adminBtn").classList.remove("hidden");
-        document.getElementById("loginBtn").classList.add("hidden");
-        document.getElementById("logoutBtn").classList.remove("hidden");
+    /* Create / update user document on first login */
+    async function ensureUserDoc(user) {
+      const ref  = doc(db, "users", user.uid);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        await setDoc(ref, {
+          uid:             user.uid,
+          email:           user.email,
+          displayName:     user.displayName || "",
+          photoURL:        user.photoURL    || "",
+          joinedAt:        serverTimestamp(),
+          paid_works_count: 0
+        });
       } else {
-        document.getElementById("adminBtn").classList.add("hidden");
-        document.getElementById("loginBtn").classList.remove("hidden");
-        document.getElementById("logoutBtn").classList.add("hidden");
-        if (document.getElementById("dashboard").classList.contains("active-view")) {
+        // Keep displayName / photoURL fresh
+        await updateDoc(ref, {
+          displayName: user.displayName || snap.data().displayName || "",
+          photoURL:    user.photoURL    || snap.data().photoURL    || ""
+        });
+      }
+    }
+
+    onAuthStateChanged(auth, async user => {
+      currentUser = user;
+      const isAdmin = user && user.email === ADMIN_EMAIL;
+
+      /* Navbar state */
+      setEl("navLoginBtn",  !user);
+      setEl("navLogoutBtn", !!user);
+      setEl("navAdminBtn",  isAdmin);
+      setEl("navProfileBtn",!!user && !isAdmin);
+
+      /* Mobile nav state */
+      setEl("mNavLoginBtn",   !user);
+      setEl("mNavLogoutBtn",  !!user);
+      setEl("mNavAdminBtn",   isAdmin);
+      setEl("mNavProfileBtn", !!user && !isAdmin);
+
+      if (user) {
+        await ensureUserDoc(user);
+        if (!isAdmin && document.getElementById("dashboard")?.classList.contains("active-view")) {
+          showView("public");
+        }
+      } else {
+        if (document.getElementById("profile")?.classList.contains("active-view") ||
+            document.getElementById("dashboard")?.classList.contains("active-view")) {
           showView("public");
         }
       }
     });
 
-    // ─── VIEWS ──────────────────────────────────────────────────────────────
+    /* Helper – show/hide element by id */
+    function setEl(id, show) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.toggle("hidden", !show);
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       VIEWS
+    ═══════════════════════════════════════════════════════════ */
     window.showView = (view) => {
       document.querySelectorAll(".view").forEach(v => v.classList.remove("active-view"));
-      document.getElementById(view).classList.add("active-view");
-      if (view === "dashboard") {
-        loadDashboardPortfolio();
-        loadDashboardStatus();
-        document.getElementById("dashSection").classList.add("active-dash");
-        document.getElementById("statusSection").classList.remove("active-dash");
-      }
+      const el = document.getElementById(view);
+      if (!el) return;
+      el.classList.add("active-view");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+
       if (view === "public") {
         loadPublicPortfolio();
         loadPublicStatus();
-        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+      if (view === "dashboard") {
+        if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
+          showView("public");
+          showToast("Admin access only.", "error");
+          return;
+        }
+        loadDashboardPortfolio();
+        loadDashboardStatus();
+        loadAdminUsers();
+        showDash("dash");
+      }
+      if (view === "profile") {
+        if (!currentUser) {
+          showToast("Please sign in to view your profile.", "error");
+          showView("public");
+          return;
+        }
+        loadProfileView();
       }
     };
 
     window.showDash = (sec) => {
       document.querySelectorAll(".dash-section").forEach(s => s.classList.remove("active-dash"));
-      document.getElementById(sec + "Section").classList.add("active-dash");
+      document.getElementById(sec + "Section")?.classList.add("active-dash");
       document.querySelectorAll(".dash-tab").forEach(t => t.classList.remove("tab-active"));
-      document.getElementById("tab-" + sec).classList.add("tab-active");
+      document.getElementById("tab-" + sec)?.classList.add("tab-active");
     };
 
-    // ─── PORTFOLIO ───────────────────────────────────────────────────────────
+    /* ══════════════════════════════════════════════════════════
+       PROFILE VIEW
+    ═══════════════════════════════════════════════════════════ */
+    async function loadProfileView() {
+      if (!currentUser) return;
+
+      /* Fill header */
+      const avatar = document.getElementById("profileAvatar");
+      const name   = document.getElementById("profileName");
+      const email  = document.getElementById("profileEmail");
+
+      avatar.src = currentUser.photoURL || "https://placehold.co/100x100/1a0033/bf00ff?text=U";
+      name.textContent  = currentUser.displayName || "Player";
+      email.textContent = currentUser.email;
+
+      /* Fetch user doc */
+      const ref  = doc(db, "users", currentUser.uid);
+      const snap = await getDoc(ref);
+      const data = snap.exists() ? snap.data() : {};
+
+      /* Join date */
+      const joined = data.joinedAt?.toDate();
+      document.getElementById("profileJoined").textContent = joined
+        ? joined.toLocaleDateString("en-US", { year:"numeric", month:"long", day:"numeric" })
+        : "—";
+
+      /* Paid works */
+      document.getElementById("profilePaidWorks").textContent = data.paid_works_count ?? 0;
+
+      /* Load user's orders */
+      loadUserOrders();
+    }
+
+    async function loadUserOrders() {
+      const cont = document.getElementById("userOrdersCont");
+      cont.innerHTML = `<div class="flex justify-center py-10"><div class="spinner"></div></div>`;
+
+      if (!currentUser) return;
+
+      try {
+        const q    = query(
+          collection(db, "status"),
+          where("customerEmail", "==", currentUser.email),
+          orderBy("createdAt", "desc")
+        );
+        const snap = await getDocs(q);
+        const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        if (!items.length) {
+          cont.innerHTML = `
+            <div class="text-center py-12">
+              <i class="fa-solid fa-inbox text-purple-900 text-4xl mb-3"></i>
+              <p class="font-poppins text-gray-600 text-sm">No active orders yet.</p>
+              <p class="font-mono text-xs text-gray-700 mt-1">Your orders will appear here once the admin creates them.</p>
+            </div>`;
+          return;
+        }
+
+        const LABELS = {10:"Starting",25:"In Progress",50:"Halfway",75:"Almost Done",100:"Complete ✓"};
+        const COLORS = {10:"#6b21a8",25:"#7e22ce",50:"#9333ea",75:"#a855f7",100:"#22c55e"};
+
+        cont.innerHTML = items.map(item => {
+          const pct   = item.progress || 10;
+          const label = LABELS[pct] || "In Progress";
+          const color = COLORS[pct] || "#9333ea";
+          return `
+            <div class="glass-card rounded-xl p-5">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div>
+                  <p class="font-bebas text-xl text-white tracking-wider">${escHtml(item.projectTitle || "Design Project")}</p>
+                  <p class="font-mono text-xs text-purple-400 mt-0.5">${escHtml(item.clientName || "")}</p>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span class="status-pill" style="--pill-color:${color}; color:${color}; border-color:${color}40; background:${color}15;">
+                    ${label}
+                  </span>
+                  <span class="font-bebas text-2xl" style="color:${color}">${pct}%</span>
+                </div>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill" style="width:${pct}%; --pct:${pct}%"></div>
+              </div>
+            </div>`;
+        }).join("");
+      } catch (err) {
+        cont.innerHTML = `<p class="text-center text-red-400 py-8 font-poppins text-sm">Error loading orders: ${err.message}</p>`;
+      }
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       PORTFOLIO (PUBLIC)
+    ═══════════════════════════════════════════════════════════ */
     async function fetchPortfolio() {
-      const q = query(collection(db, "portfolio"), orderBy("createdAt", "desc"));
+      const q    = query(collection(db, "portfolio"), orderBy("createdAt", "desc"));
       const snap = await getDocs(q);
       portfolioItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       return portfolioItems;
@@ -104,14 +263,16 @@
 
     async function loadPublicPortfolio() {
       const grid = document.getElementById("portfolioGrid");
+      if (!grid) return;
       grid.innerHTML = `<div class="col-span-full flex justify-center py-16"><div class="spinner"></div></div>`;
       const items = await fetchPortfolio();
       if (!items.length) {
-        grid.innerHTML = `<div class="col-span-full text-center py-16 text-gray-600 font-poppins">No portfolio items yet.</div>`;
+        grid.innerHTML = `<div class="col-span-full text-center py-16 text-gray-600">No portfolio items yet.</div>`;
         return;
       }
       grid.innerHTML = items.map(item => `
-        <div class="glass-card rounded-2xl overflow-hidden group cursor-pointer" onclick="openLightbox('${escHtml(item.imageUrl)}','${escHtml(item.title)}','${escHtml(item.desc || '')}')">
+        <div class="glass-card rounded-2xl overflow-hidden group cursor-pointer"
+             onclick="openLightbox('${escAttr(item.imageUrl)}','${escAttr(item.title)}','${escAttr(item.desc||"")}')">
           <div class="relative overflow-hidden aspect-video bg-black/40">
             <img src="${escHtml(item.imageUrl)}" alt="${escHtml(item.title)}"
               class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
@@ -123,18 +284,64 @@
           </div>
           <div class="p-5">
             <h3 class="font-bebas text-xl text-white tracking-wider mb-1">${escHtml(item.title)}</h3>
-            <p class="font-poppins text-gray-500 text-xs leading-relaxed line-clamp-2">${escHtml(item.desc || "")}</p>
+            <p class="font-poppins text-gray-500 text-xs leading-relaxed line-clamp-2">${escHtml(item.desc||"")}</p>
           </div>
-        </div>
-      `).join("");
+        </div>`).join("");
     }
 
+    /* ══════════════════════════════════════════════════════════
+       STATUS TRACKER (PUBLIC — no customer email shown)
+    ═══════════════════════════════════════════════════════════ */
+    async function fetchStatus() {
+      const q    = query(collection(db, "status"), orderBy("createdAt", "desc"));
+      const snap = await getDocs(q);
+      statusItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      return statusItems;
+    }
+
+    async function loadPublicStatus() {
+      const cont = document.getElementById("statusContainer");
+      if (!cont) return;
+      cont.innerHTML = `<div class="flex justify-center py-10"><div class="spinner"></div></div>`;
+      const items = await fetchStatus();
+      if (!items.length) {
+        cont.innerHTML = `<p class="text-center text-gray-600 py-10 font-poppins text-sm">No active projects.</p>`;
+        return;
+      }
+      const LABELS = {10:"Starting",25:"In Progress",50:"Halfway",75:"Almost Done",100:"Complete ✓"};
+      cont.innerHTML = items.map(item => {
+        const pct   = item.progress || 10;
+        const label = LABELS[pct] || "In Progress";
+        return `
+          <div class="glass-card rounded-xl p-5">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <p class="font-bebas text-white text-lg tracking-wider">${escHtml(item.clientName)}</p>
+                <p class="font-mono text-xs text-purple-400 mt-0.5">${escHtml(item.projectTitle||"Design Project")}</p>
+              </div>
+              <div class="text-right">
+                <span class="font-bebas text-2xl text-purple-300">${pct}%</span>
+                <p class="font-poppins text-xs text-gray-500">${label}</p>
+              </div>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" style="width:${pct}%; --pct:${pct}%"></div>
+            </div>
+          </div>`;
+      }).join("");
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       ADMIN — PORTFOLIO MANAGER
+    ═══════════════════════════════════════════════════════════ */
     async function loadDashboardPortfolio() {
       const list = document.getElementById("dashPortfolioList");
+      if (!list) return;
       list.innerHTML = `<div class="flex justify-center py-10"><div class="spinner"></div></div>`;
       const items = await fetchPortfolio();
+      document.getElementById("statPortfolio").textContent = items.length;
       if (!items.length) {
-        list.innerHTML = `<p class="text-center text-gray-600 py-10 font-poppins text-sm">No items yet.</p>`;
+        list.innerHTML = `<p class="text-center text-gray-600 py-10 text-sm">No items yet.</p>`;
         return;
       }
       list.innerHTML = items.map(item => `
@@ -143,27 +350,24 @@
             onerror="this.src='https://placehold.co/64x48/1a0033/bf00ff?text=IMG'"/>
           <div class="flex-1 min-w-0">
             <p class="font-bebas text-white text-lg tracking-wider truncate">${escHtml(item.title)}</p>
-            <p class="font-poppins text-gray-500 text-xs truncate">${item.category || "Uncategorized"}</p>
+            <p class="font-poppins text-gray-500 text-xs truncate">${item.category||"Uncategorized"}</p>
           </div>
           <div class="flex gap-2 flex-shrink-0">
-            <button onclick="editPortfolioItem('${item.id}','${escAttr(item.title)}','${escAttr(item.desc||'')}','${escAttr(item.imageUrl)}','${escAttr(item.category||'')}')"
+            <button onclick="editPortfolioItem('${item.id}','${escAttr(item.title)}','${escAttr(item.desc||"")}','${escAttr(item.imageUrl)}','${escAttr(item.category||"")}')"
               class="btn-icon text-blue-400 hover:text-blue-300"><i class="fa-solid fa-pen text-xs"></i></button>
             <button onclick="deletePortfolioItem('${item.id}')"
               class="btn-icon text-red-400 hover:text-red-300"><i class="fa-solid fa-trash text-xs"></i></button>
           </div>
-        </div>
-      `).join("");
+        </div>`).join("");
     }
 
     window.savePortfolioItem = async () => {
-      const editId  = document.getElementById("editPortfolioId").value;
-      const title   = document.getElementById("pTitle").value.trim();
-      const desc    = document.getElementById("pDesc").value.trim();
-      const imgUrl  = document.getElementById("pImg").value.trim();
-      const cat     = document.getElementById("pCat").value.trim();
-
+      const editId = document.getElementById("editPortfolioId").value;
+      const title  = document.getElementById("pTitle").value.trim();
+      const desc   = document.getElementById("pDesc").value.trim();
+      const imgUrl = document.getElementById("pImg").value.trim();
+      const cat    = document.getElementById("pCat").value.trim();
       if (!title || !imgUrl) { showToast("Title and Image URL are required.", "error"); return; }
-
       setBtnLoading("savePortfolioBtn", true);
       try {
         if (editId) {
@@ -171,166 +375,121 @@
           showToast("Item updated!", "success");
         } else {
           await addDoc(collection(db, "portfolio"), { title, desc, imageUrl: imgUrl, category: cat, createdAt: serverTimestamp() });
-          showToast("Item added!", "success");
+          showToast("Item added to Armory!", "success");
         }
         clearPortfolioForm();
         loadDashboardPortfolio();
-        loadPublicPortfolio();
-      } catch (e) {
-        showToast("Error: " + e.message, "error");
-      }
+      } catch (e) { showToast("Error: " + e.message, "error"); }
       setBtnLoading("savePortfolioBtn", false);
     };
 
     window.editPortfolioItem = (id, title, desc, img, cat) => {
       document.getElementById("editPortfolioId").value = id;
-      document.getElementById("pTitle").value = title;
-      document.getElementById("pDesc").value = desc;
-      document.getElementById("pImg").value = img;
-      document.getElementById("pCat").value = cat;
+      document.getElementById("pTitle").value  = title;
+      document.getElementById("pDesc").value   = desc;
+      document.getElementById("pImg").value    = img;
+      document.getElementById("pCat").value    = cat;
       document.getElementById("savePortfolioBtn").innerHTML = '<i class="fa-solid fa-floppy-disk mr-2"></i>Update Item';
       document.getElementById("cancelEditPortfolio").classList.remove("hidden");
-      document.getElementById("portfolioForm").scrollIntoView({ behavior: "smooth" });
+      document.getElementById("portfolioForm").scrollIntoView({ behavior:"smooth" });
     };
 
-    window.cancelPortfolioEdit = () => { clearPortfolioForm(); };
+    window.cancelPortfolioEdit = () => clearPortfolioForm();
 
     function clearPortfolioForm() {
-      document.getElementById("editPortfolioId").value = "";
-      document.getElementById("pTitle").value = "";
-      document.getElementById("pDesc").value = "";
-      document.getElementById("pImg").value = "";
+      ["editPortfolioId","pTitle","pDesc","pImg"].forEach(id => document.getElementById(id).value = "");
       document.getElementById("pCat").value = "";
       document.getElementById("savePortfolioBtn").innerHTML = '<i class="fa-solid fa-plus mr-2"></i>Add to Armory';
       document.getElementById("cancelEditPortfolio").classList.add("hidden");
     }
 
     window.deletePortfolioItem = async (id) => {
-      if (!confirm("Delete this item?")) return;
-      try {
-        await deleteDoc(doc(db, "portfolio", id));
-        showToast("Deleted.", "success");
-        loadDashboardPortfolio();
-        loadPublicPortfolio();
-      } catch (e) { showToast("Error: " + e.message, "error"); }
+      if (!confirm("Delete this portfolio item?")) return;
+      try { await deleteDoc(doc(db, "portfolio", id)); showToast("Deleted.", "success"); loadDashboardPortfolio(); }
+      catch (e) { showToast("Error: " + e.message, "error"); }
     };
 
-    // ─── STATUS TRACKER ───────────────────────────────────────────────────────
-    const PROGRESS_LABELS = { 10: "Starting", 25: "In Progress", 50: "Halfway", 75: "Almost Done", 100: "Complete" };
-
-    async function fetchStatus() {
-      const q = query(collection(db, "status"), orderBy("createdAt", "desc"));
-      const snap = await getDocs(q);
-      statusItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      return statusItems;
-    }
-
-    async function loadPublicStatus() {
-      const cont = document.getElementById("statusContainer");
-      cont.innerHTML = `<div class="flex justify-center py-10"><div class="spinner"></div></div>`;
-      const items = await fetchStatus();
-      if (!items.length) {
-        cont.innerHTML = `<p class="text-center text-gray-600 py-10 font-poppins text-sm">No active projects.</p>`;
-        return;
-      }
-      cont.innerHTML = items.map(item => {
-        const pct = item.progress || 10;
-        const label = PROGRESS_LABELS[pct] || "In Progress";
-        return `
-          <div class="glass-card rounded-xl p-5">
-            <div class="flex items-center justify-between mb-3">
-              <div>
-                <p class="font-bebas text-white text-lg tracking-wider">${escHtml(item.clientName)}</p>
-                <p class="font-mono text-xs text-purple-400 mt-0.5">${escHtml(item.projectTitle || "Design Project")}</p>
-              </div>
-              <div class="text-right">
-                <span class="font-bebas text-2xl text-purple-300">${pct}%</span>
-                <p class="font-poppins text-xs text-gray-500">${label}</p>
-              </div>
-            </div>
-            <div class="progress-track">
-              <div class="progress-fill" style="width: ${pct}%; --pct: ${pct}%"></div>
-            </div>
-          </div>
-        `;
-      }).join("");
-    }
-
+    /* ══════════════════════════════════════════════════════════
+       ADMIN — STATUS MANAGER (with customer email)
+    ═══════════════════════════════════════════════════════════ */
     async function loadDashboardStatus() {
       const list = document.getElementById("dashStatusList");
+      if (!list) return;
       list.innerHTML = `<div class="flex justify-center py-10"><div class="spinner"></div></div>`;
       const items = await fetchStatus();
+      document.getElementById("statStatus").textContent = items.length;
       if (!items.length) {
-        list.innerHTML = `<p class="text-center text-gray-600 py-10 font-poppins text-sm">No status items.</p>`;
+        list.innerHTML = `<p class="text-center text-gray-600 py-10 text-sm">No status items.</p>`;
         return;
       }
       list.innerHTML = items.map(item => {
         const pct = item.progress || 10;
         return `
-          <div class="glass-card rounded-xl p-4 flex items-center gap-4">
-            <div class="flex-1 min-w-0">
-              <p class="font-bebas text-white text-lg tracking-wider truncate">${escHtml(item.clientName)}</p>
-              <p class="font-poppins text-xs text-gray-500 truncate">${escHtml(item.projectTitle || "")}</p>
-              <div class="progress-track mt-2 h-2">
-                <div class="progress-fill" style="width: ${pct}%; --pct: ${pct}%"></div>
+          <div class="glass-card rounded-xl p-4">
+            <div class="flex items-start gap-4">
+              <div class="flex-1 min-w-0">
+                <p class="font-bebas text-white text-lg tracking-wider truncate">${escHtml(item.clientName)}</p>
+                <p class="font-poppins text-gray-500 text-xs truncate">${escHtml(item.projectTitle||"")}</p>
+                ${item.customerEmail
+                  ? `<p class="font-mono text-xs text-purple-500 truncate mt-0.5"><i class="fa-solid fa-envelope text-xs mr-1"></i>${escHtml(item.customerEmail)}</p>`
+                  : `<p class="font-mono text-xs text-gray-700 mt-0.5">No email linked</p>`}
+              </div>
+              <div class="flex-shrink-0 text-right">
+                <span class="font-bebas text-2xl text-purple-300">${pct}%</span>
+              </div>
+              <div class="flex gap-2 flex-shrink-0">
+                <button onclick="editStatusItem('${item.id}','${escAttr(item.clientName)}','${escAttr(item.projectTitle||"")}','${pct}','${escAttr(item.customerEmail||"")}')"
+                  class="btn-icon text-blue-400 hover:text-blue-300"><i class="fa-solid fa-pen text-xs"></i></button>
+                <button onclick="deleteStatusItem('${item.id}')"
+                  class="btn-icon text-red-400 hover:text-red-300"><i class="fa-solid fa-trash text-xs"></i></button>
               </div>
             </div>
-            <div class="flex-shrink-0 text-right">
-              <span class="font-bebas text-xl text-purple-300">${pct}%</span>
+            <div class="progress-track mt-3 h-2">
+              <div class="progress-fill" style="width:${pct}%; --pct:${pct}%"></div>
             </div>
-            <div class="flex gap-2 flex-shrink-0">
-              <button onclick="editStatusItem('${item.id}','${escAttr(item.clientName)}','${escAttr(item.projectTitle||'')}','${pct}')"
-                class="btn-icon text-blue-400 hover:text-blue-300"><i class="fa-solid fa-pen text-xs"></i></button>
-              <button onclick="deleteStatusItem('${item.id}')"
-                class="btn-icon text-red-400 hover:text-red-300"><i class="fa-solid fa-trash text-xs"></i></button>
-            </div>
-          </div>
-        `;
+          </div>`;
       }).join("");
     }
 
     window.saveStatusItem = async () => {
-      const editId  = document.getElementById("editStatusId").value;
-      const client  = document.getElementById("sClient").value.trim();
-      const project = document.getElementById("sProject").value.trim();
+      const editId   = document.getElementById("editStatusId").value;
+      const client   = document.getElementById("sClient").value.trim();
+      const project  = document.getElementById("sProject").value.trim();
       const progress = parseInt(document.getElementById("sProgress").value);
-
+      const custEmail= document.getElementById("sCustomerEmail").value.trim().toLowerCase();
       if (!client) { showToast("Client name is required.", "error"); return; }
-
       setBtnLoading("saveStatusBtn", true);
       try {
+        const data = { clientName: client, projectTitle: project, progress, customerEmail: custEmail };
         if (editId) {
-          await updateDoc(doc(db, "status", editId), { clientName: client, projectTitle: project, progress });
+          await updateDoc(doc(db, "status", editId), data);
           showToast("Status updated!", "success");
         } else {
-          await addDoc(collection(db, "status"), { clientName: client, projectTitle: project, progress, createdAt: serverTimestamp() });
+          await addDoc(collection(db, "status"), { ...data, createdAt: serverTimestamp() });
           showToast("Status added!", "success");
         }
         clearStatusForm();
         loadDashboardStatus();
         loadPublicStatus();
-      } catch (e) {
-        showToast("Error: " + e.message, "error");
-      }
+      } catch (e) { showToast("Error: " + e.message, "error"); }
       setBtnLoading("saveStatusBtn", false);
     };
 
-    window.editStatusItem = (id, client, project, progress) => {
-      document.getElementById("editStatusId").value = id;
-      document.getElementById("sClient").value = client;
-      document.getElementById("sProject").value = project;
-      document.getElementById("sProgress").value = progress;
-      document.getElementById("saveStatusBtn").innerHTML = '<i class="fa-solid fa-floppy-disk mr-2"></i>Update Status';
+    window.editStatusItem = (id, client, project, progress, custEmail) => {
+      document.getElementById("editStatusId").value       = id;
+      document.getElementById("sClient").value            = client;
+      document.getElementById("sProject").value           = project;
+      document.getElementById("sProgress").value          = progress;
+      document.getElementById("sCustomerEmail").value     = custEmail;
+      document.getElementById("saveStatusBtn").innerHTML  = '<i class="fa-solid fa-floppy-disk mr-2"></i>Update Status';
       document.getElementById("cancelEditStatus").classList.remove("hidden");
-      document.getElementById("statusForm").scrollIntoView({ behavior: "smooth" });
+      document.getElementById("statusForm").scrollIntoView({ behavior:"smooth" });
     };
 
-    window.cancelStatusEdit = () => { clearStatusForm(); };
+    window.cancelStatusEdit = () => clearStatusForm();
 
     function clearStatusForm() {
-      document.getElementById("editStatusId").value = "";
-      document.getElementById("sClient").value = "";
-      document.getElementById("sProject").value = "";
+      ["editStatusId","sClient","sProject","sCustomerEmail"].forEach(id => document.getElementById(id).value = "");
       document.getElementById("sProgress").value = "50";
       document.getElementById("saveStatusBtn").innerHTML = '<i class="fa-solid fa-plus mr-2"></i>Add Status';
       document.getElementById("cancelEditStatus").classList.add("hidden");
@@ -338,19 +497,92 @@
 
     window.deleteStatusItem = async (id) => {
       if (!confirm("Delete this status?")) return;
-      try {
-        await deleteDoc(doc(db, "status", id));
-        showToast("Deleted.", "success");
-        loadDashboardStatus();
-        loadPublicStatus();
-      } catch (e) { showToast("Error: " + e.message, "error"); }
+      try { await deleteDoc(doc(db, "status", id)); showToast("Deleted.", "success"); loadDashboardStatus(); loadPublicStatus(); }
+      catch (e) { showToast("Error: " + e.message, "error"); }
     };
 
-    // ─── LIGHTBOX ────────────────────────────────────────────────────────────
+    /* ══════════════════════════════════════════════════════════
+       ADMIN — USER MANAGER
+    ═══════════════════════════════════════════════════════════ */
+    async function loadAdminUsers() {
+      const list = document.getElementById("adminUserList");
+      if (!list) return;
+      list.innerHTML = `<div class="flex justify-center py-10"><div class="spinner"></div></div>`;
+      try {
+        const snap = await getDocs(collection(db, "users"));
+        const users = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        document.getElementById("statUsers").textContent = users.length;
+        if (!users.length) {
+          list.innerHTML = `<p class="text-center text-gray-600 py-10 text-sm">No registered users yet.</p>`;
+          return;
+        }
+        list.innerHTML = users.map(u => {
+          const joined = u.joinedAt?.toDate
+            ? u.joinedAt.toDate().toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"})
+            : "—";
+          return `
+            <div class="glass-card rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+              <img src="${escHtml(u.photoURL||"")}" alt="" class="w-12 h-12 rounded-xl object-cover flex-shrink-0 bg-purple-900/40"
+                onerror="this.src='https://placehold.co/48x48/1a0033/bf00ff?text=U'"/>
+              <div class="flex-1 min-w-0">
+                <p class="font-bebas text-white text-lg tracking-wider truncate">${escHtml(u.displayName||"Player")}</p>
+                <p class="font-mono text-xs text-purple-400 truncate">${escHtml(u.email||"")}</p>
+                <p class="font-poppins text-xs text-gray-600 mt-0.5">Joined: ${joined}</p>
+              </div>
+              <div class="flex items-center gap-3 flex-shrink-0">
+                <div class="text-center glass rounded-lg px-4 py-2">
+                  <p class="font-bebas text-2xl text-purple-300">${u.paid_works_count ?? 0}</p>
+                  <p class="font-mono text-xs text-gray-600 uppercase tracking-wider">Works</p>
+                </div>
+                <div class="flex flex-col gap-1">
+                  <button onclick="openUpdateWorksModal('${u.id}','${escAttr(u.displayName||"Player")}',${u.paid_works_count??0})"
+                    class="btn-icon text-green-400 hover:text-green-300 w-8 h-8" title="Update Paid Works">
+                    <i class="fa-solid fa-trophy text-xs"></i>
+                  </button>
+                </div>
+              </div>
+            </div>`;
+        }).join("");
+      } catch (e) {
+        list.innerHTML = `<p class="text-center text-red-400 py-10 text-sm">Error: ${e.message}</p>`;
+      }
+    }
+
+    /* Update paid works modal */
+    window.openUpdateWorksModal = (uid, name, current) => {
+      document.getElementById("uwModalTitle").textContent = `Update Works — ${name}`;
+      document.getElementById("uwUserId").value    = uid;
+      document.getElementById("uwWorksCount").value= current;
+      document.getElementById("updateWorksModal").classList.remove("hidden");
+      document.getElementById("updateWorksModal").classList.add("flex");
+    };
+
+    window.closeUpdateWorksModal = () => {
+      document.getElementById("updateWorksModal").classList.add("hidden");
+      document.getElementById("updateWorksModal").classList.remove("flex");
+    };
+
+    window.saveUserWorks = async () => {
+      const uid   = document.getElementById("uwUserId").value;
+      const count = parseInt(document.getElementById("uwWorksCount").value);
+      if (isNaN(count) || count < 0) { showToast("Enter a valid number.", "error"); return; }
+      setBtnLoading("saveWorksBtn", true);
+      try {
+        await updateDoc(doc(db, "users", uid), { paid_works_count: count });
+        showToast("Paid works updated!", "success");
+        closeUpdateWorksModal();
+        loadAdminUsers();
+      } catch (e) { showToast("Error: " + e.message, "error"); }
+      setBtnLoading("saveWorksBtn", false);
+    };
+
+    /* ══════════════════════════════════════════════════════════
+       LIGHTBOX
+    ═══════════════════════════════════════════════════════════ */
     window.openLightbox = (src, title, desc) => {
       document.getElementById("lbImg").src = src;
       document.getElementById("lbTitle").textContent = title;
-      document.getElementById("lbDesc").textContent = desc;
+      document.getElementById("lbDesc").textContent  = desc;
       document.getElementById("lightbox").classList.remove("hidden");
       document.getElementById("lightbox").classList.add("flex");
       document.body.style.overflow = "hidden";
@@ -361,284 +593,297 @@
       document.body.style.overflow = "";
     };
 
-    // ─── HELPERS ─────────────────────────────────────────────────────────────
+    /* ══════════════════════════════════════════════════════════
+       HELPERS
+    ═══════════════════════════════════════════════════════════ */
     function showToast(msg, type = "info") {
       const t = document.getElementById("toast");
-      const colors = { success: "border-green-500 text-green-300", error: "border-red-500 text-red-300", info: "border-purple-500 text-purple-300" };
-      t.className = `toast-base glass border ${colors[type]}`;
+      const icon = {success:"fa-circle-check",error:"fa-circle-xmark",info:"fa-circle-info"};
+      const col  = {success:"border-green-500/40 text-green-300",error:"border-red-500/40 text-red-300",info:"border-purple-500/40 text-purple-300"};
+      t.className = `toast-base glass border ${col[type]}`;
+      t.querySelector("#toastIcon").className = `fa-solid ${icon[type]} text-sm flex-shrink-0`;
       t.querySelector("#toastMsg").textContent = msg;
-      t.classList.remove("toast-hidden");
-      t.classList.add("toast-show");
+      t.classList.remove("toast-hidden"); t.classList.add("toast-show");
       clearTimeout(window._toastTimer);
       window._toastTimer = setTimeout(() => {
-        t.classList.remove("toast-show");
-        t.classList.add("toast-hidden");
-      }, 3500);
+        t.classList.remove("toast-show"); t.classList.add("toast-hidden");
+      }, 3800);
+    }
+    function setBtnLoading(id, on) {
+      const b = document.getElementById(id);
+      if (!b) return;
+      b.disabled = on; b.style.opacity = on ? "0.6" : "1";
+    }
+    function escHtml(s) {
+      return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    }
+    function escAttr(s) {
+      return String(s||"").replace(/'/g,"&#39;").replace(/"/g,"&quot;");
     }
 
-    function setBtnLoading(btnId, loading) {
-      const btn = document.getElementById(btnId);
-      btn.disabled = loading;
-      btn.style.opacity = loading ? "0.6" : "1";
-    }
-
-    function escHtml(str) { return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
-    function escAttr(str) { return String(str).replace(/'/g,"&#39;").replace(/"/g,"&quot;"); }
-
-    // ─── INIT ────────────────────────────────────────────────────────────────
+    /* Init */
     document.addEventListener("DOMContentLoaded", () => {
       showView("public");
+      document.addEventListener("keydown", e => {
+        if (e.key === "Escape") {
+          closeLightbox();
+          closeUpdateWorksModal();
+        }
+      });
+    });
+
+    /* Expose for inline onclick */
+    Object.assign(window, {
+      loadPublicPortfolio, loadPublicStatus,
+      loadDashboardPortfolio, loadDashboardStatus, loadAdminUsers,
+      loadUserOrders
     });
   </script>
 
+  <!-- ═══════════════════════════════════════════════════════════
+       STYLES
+  ════════════════════════════════════════════════════════════════ -->
   <style>
     :root {
       --neon: #bf00ff;
       --glow: #d966ff;
-      --mid: #7b00cc;
-      --bg: #060609;
+      --mid:  #7b00cc;
+      --bg:   #060609;
     }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
-
     body {
       background-color: var(--bg);
-      font-family: 'Poppins', sans-serif;
+      font-family: "Poppins", sans-serif;
       color: #e0d8f0;
       overflow-x: hidden;
     }
 
-    /* Ambient background */
+    /* Ambient */
     body::before {
-      content: '';
-      position: fixed; inset: 0; z-index: 0;
+      content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
       background:
-        radial-gradient(ellipse 80% 50% at 15% 5%, rgba(123,0,204,0.15) 0%, transparent 55%),
-        radial-gradient(ellipse 60% 40% at 85% 90%, rgba(191,0,255,0.1) 0%, transparent 50%);
-      pointer-events: none;
+        radial-gradient(ellipse 80% 50% at 15%  5%, rgba(123,0,204,.15) 0%, transparent 55%),
+        radial-gradient(ellipse 60% 40% at 85% 90%, rgba(191,0,255,.10) 0%, transparent 50%),
+        radial-gradient(ellipse 40% 30% at 50% 50%, rgba( 61,0,102,.08) 0%, transparent 60%);
     }
-
     body::after {
-      content: '';
-      position: fixed; inset: 0; z-index: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
-      pointer-events: none; opacity: 0.5;
+      content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: .4;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.025'/%3E%3C/svg%3E");
     }
 
-    /* Font aliases */
-    .font-bebas { font-family: 'Bebas Neue', sans-serif; }
-    .font-poppins { font-family: 'Poppins', sans-serif; }
-    .font-mono { font-family: 'DM Mono', monospace; }
+    /* Font shortcuts */
+    .font-bebas  { font-family: "Bebas Neue", sans-serif; }
+    .font-poppins{ font-family: "Poppins", sans-serif; }
+    .font-mono   { font-family: "DM Mono", monospace; }
 
-    /* Glass morphism */
+    /* Glass */
     .glass {
-      background: rgba(255,255,255,0.04);
+      background: rgba(255,255,255,.04);
       backdrop-filter: blur(24px) saturate(180%);
       -webkit-backdrop-filter: blur(24px) saturate(180%);
-      border: 1px solid rgba(191,0,255,0.18);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06);
+      border: 1px solid rgba(191,0,255,.18);
+      box-shadow: 0 8px 32px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.06);
     }
-
     .glass-card {
-      background: rgba(255,255,255,0.03);
+      background: rgba(255,255,255,.03);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(191,0,255,0.2);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
-      transition: all 0.35s cubic-bezier(0.23,1,0.32,1);
+      border: 1px solid rgba(191,0,255,.2);
+      box-shadow: 0 4px 20px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.05);
+      transition: all .35s cubic-bezier(.23,1,.32,1);
     }
     .glass-card:hover {
-      border-color: rgba(191,0,255,0.5);
-      box-shadow: 0 8px 40px rgba(191,0,255,0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+      border-color: rgba(191,0,255,.48);
+      box-shadow: 0 8px 40px rgba(191,0,255,.2), inset 0 1px 0 rgba(255,255,255,.1);
       transform: translateY(-4px);
     }
 
-    /* Navbar glass */
+    /* Navbar */
     .navbar-glass {
-      background: rgba(6,6,9,0.75);
+      background: rgba(6,6,9,.78);
       backdrop-filter: blur(32px);
       -webkit-backdrop-filter: blur(32px);
-      border-bottom: 1px solid rgba(191,0,255,0.15);
+      border-bottom: 1px solid rgba(191,0,255,.14);
     }
 
-    /* Liquid glass button */
+    /* Buttons */
     .btn-liquid {
-      position: relative; overflow: hidden;
-      background: rgba(191,0,255,0.1);
+      position: relative; overflow: hidden; cursor: pointer;
+      background: rgba(191,0,255,.1);
       backdrop-filter: blur(16px);
-      border: 1px solid rgba(191,0,255,0.45);
-      box-shadow: 0 0 18px rgba(191,0,255,0.25), inset 0 1px 0 rgba(255,255,255,0.12);
-      transition: all 0.3s cubic-bezier(0.23,1,0.32,1);
-      cursor: pointer;
+      border: 1px solid rgba(191,0,255,.44);
+      box-shadow: 0 0 16px rgba(191,0,255,.22), inset 0 1px 0 rgba(255,255,255,.1);
+      transition: all .3s cubic-bezier(.23,1,.32,1);
     }
     .btn-liquid::before {
-      content: '';
-      position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
-      transition: left 0.5s ease;
+      content: ""; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+      background: linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);
+      transition: left .5s ease;
     }
     .btn-liquid:hover::before { left: 100%; }
     .btn-liquid:hover {
-      background: rgba(191,0,255,0.22);
-      border-color: rgba(217,102,255,0.7);
-      box-shadow: 0 0 32px rgba(191,0,255,0.45), inset 0 1px 0 rgba(255,255,255,0.18);
+      background: rgba(191,0,255,.22); border-color: rgba(217,102,255,.7);
+      box-shadow: 0 0 30px rgba(191,0,255,.42), inset 0 1px 0 rgba(255,255,255,.16);
       transform: translateY(-1px);
     }
-
-    /* Solid purple button */
     .btn-purple {
-      background: linear-gradient(135deg, #7b00cc, #bf00ff);
-      border: 1px solid rgba(217,102,255,0.4);
-      box-shadow: 0 4px 20px rgba(191,0,255,0.35);
-      transition: all 0.3s ease;
-      cursor: pointer;
+      background: linear-gradient(135deg,#7b00cc,#bf00ff);
+      border: 1px solid rgba(217,102,255,.4);
+      box-shadow: 0 4px 20px rgba(191,0,255,.35);
+      transition: all .3s ease; cursor: pointer;
     }
-    .btn-purple:hover {
-      box-shadow: 0 4px 32px rgba(191,0,255,0.55);
-      transform: translateY(-1px);
-    }
-
+    .btn-purple:hover { box-shadow: 0 4px 32px rgba(191,0,255,.55); transform: translateY(-1px); }
     .btn-icon {
-      width: 32px; height: 32px;
-      display: flex; align-items: center; justify-content: center;
-      border-radius: 8px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
-      cursor: pointer;
-      transition: all 0.2s ease;
+      width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+      border-radius: 8px; background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08); cursor: pointer;
+      transition: all .2s ease;
     }
-    .btn-icon:hover { background: rgba(255,255,255,0.08); }
+    .btn-icon:hover { background: rgba(255,255,255,.09); }
 
     /* Views */
     .view { display: none; }
     .active-view { display: block; }
-
-    /* Dash sections */
     .dash-section { display: none; }
     .active-dash { display: block; }
-
-    /* Tab active */
     .tab-active {
-      background: rgba(191,0,255,0.15) !important;
-      border-color: rgba(191,0,255,0.5) !important;
+      background: rgba(191,0,255,.15) !important;
+      border-color: rgba(191,0,255,.5) !important;
       color: #d966ff !important;
     }
 
     /* Inputs */
     .gfx-input {
-      width: 100%;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(191,0,255,0.2);
-      border-radius: 10px;
-      padding: 10px 14px;
-      color: #e0d8f0;
-      font-family: 'Poppins', sans-serif;
-      font-size: 0.875rem;
-      outline: none;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      width: 100%; background: rgba(255,255,255,.04);
+      border: 1px solid rgba(191,0,255,.2); border-radius: 10px;
+      padding: 10px 14px; color: #e0d8f0;
+      font-family: "Poppins",sans-serif; font-size: .875rem;
+      outline: none; transition: border-color .2s, box-shadow .2s;
     }
-    .gfx-input:focus {
-      border-color: rgba(191,0,255,0.55);
-      box-shadow: 0 0 0 3px rgba(191,0,255,0.1);
-    }
-    .gfx-input::placeholder { color: rgba(200,180,220,0.3); }
+    .gfx-input:focus { border-color: rgba(191,0,255,.55); box-shadow: 0 0 0 3px rgba(191,0,255,.1); }
+    .gfx-input::placeholder { color: rgba(200,180,220,.3); }
     select.gfx-input option { background: #1a0033; color: #e0d8f0; }
-
-    /* Label */
+    textarea.gfx-input { resize: vertical; }
     .gfx-label {
-      display: block;
-      font-family: 'DM Mono', monospace;
-      font-size: 0.65rem;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: rgba(217,102,255,0.7);
-      margin-bottom: 6px;
+      display: block; font-family: "DM Mono",monospace;
+      font-size: .63rem; letter-spacing: .15em;
+      text-transform: uppercase; color: rgba(217,102,255,.7); margin-bottom: 6px;
     }
 
     /* Badge */
     .badge {
-      font-family: 'DM Mono', monospace;
-      font-size: 0.6rem;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      padding: 2px 8px;
-      border-radius: 4px;
-      background: rgba(191,0,255,0.15);
-      border: 1px solid rgba(191,0,255,0.35);
-      color: var(--glow);
+      font-family: "DM Mono",monospace; font-size: .6rem;
+      letter-spacing: .12em; text-transform: uppercase;
+      padding: 2px 8px; border-radius: 4px;
+      background: rgba(191,0,255,.15); border: 1px solid rgba(191,0,255,.35); color: var(--glow);
+    }
+
+    /* Status pill */
+    .status-pill {
+      font-family: "DM Mono",monospace; font-size: .65rem;
+      letter-spacing: .1em; text-transform: uppercase;
+      padding: 3px 10px; border-radius: 99px;
+      border-width: 1px; border-style: solid;
     }
 
     /* Progress */
     .progress-track {
       width: 100%; height: 10px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(191,0,255,0.12);
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(191,0,255,.12);
       border-radius: 99px; overflow: hidden;
     }
     .progress-fill {
       height: 100%; border-radius: 99px;
-      background: linear-gradient(90deg, #7b00cc, #bf00ff, #d966ff);
-      box-shadow: 0 0 10px rgba(191,0,255,0.5);
-      animation: fillBar 1.2s cubic-bezier(0.23,1,0.32,1) forwards;
+      background: linear-gradient(90deg,#7b00cc,#bf00ff,#d966ff);
+      box-shadow: 0 0 10px rgba(191,0,255,.5);
+      animation: fillBar 1.2s cubic-bezier(.23,1,.32,1) forwards;
     }
     @keyframes fillBar { from { width: 0; } to { width: var(--pct); } }
 
     /* Spinner */
     .spinner {
       width: 36px; height: 36px;
-      border: 3px solid rgba(191,0,255,0.15);
-      border-top-color: var(--neon);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+      border: 3px solid rgba(191,0,255,.15);
+      border-top-color: var(--neon); border-radius: 50%;
+      animation: spin .8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Neon text */
-    .neon-text {
-      text-shadow: 0 0 20px var(--neon), 0 0 50px var(--mid);
-    }
-
-    /* Shimmer */
+    /* Animations */
+    .neon-text { text-shadow: 0 0 20px var(--neon), 0 0 50px var(--mid); }
     @keyframes shimmer {
-      0% { background-position: -200% 0; }
-      100% { background-position: 200% 0; }
+      0%   { background-position: -200% 0; }
+      100% { background-position:  200% 0; }
     }
     .shimmer-text {
-      background: linear-gradient(90deg, #fff 0%, var(--glow) 40%, #fff 60%, var(--glow) 100%);
-      background-size: 200% auto;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      background: linear-gradient(90deg,#fff 0%,var(--glow) 40%,#fff 60%,var(--glow) 100%);
+      background-size: 200% auto; -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent; background-clip: text;
       animation: shimmer 4s linear infinite;
     }
-
-    /* Glow dot */
     .glow-dot {
       width: 8px; height: 8px; border-radius: 50%;
-      background: var(--neon);
-      box-shadow: 0 0 6px var(--neon), 0 0 12px var(--neon);
+      background: var(--neon); box-shadow: 0 0 6px var(--neon),0 0 12px var(--neon);
       animation: pulseDot 2s ease-in-out infinite;
     }
-    @keyframes pulseDot {
-      0%,100% { opacity: 1; } 50% { opacity: 0.4; }
-    }
-
-    /* Pulse CTA */
+    @keyframes pulseDot { 0%,100%{opacity:1} 50%{opacity:.4} }
     @keyframes pulseGlow {
-      0%,100% { box-shadow: 0 0 18px rgba(191,0,255,0.3); }
-      50% { box-shadow: 0 0 40px rgba(191,0,255,0.65), 0 0 80px rgba(191,0,255,0.2); }
+      0%,100%{box-shadow:0 0 18px rgba(191,0,255,.3)}
+      50%{box-shadow:0 0 40px rgba(191,0,255,.65),0 0 80px rgba(191,0,255,.2)}
     }
     .pulse-glow { animation: pulseGlow 3s ease-in-out infinite; }
-
-    /* Float */
-    @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
     .float { animation: float 4s ease-in-out infinite; }
-
-    /* Scanline */
     .scanline {
       position: absolute; inset: 0; pointer-events: none;
-      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(191,0,255,0.012) 2px, rgba(191,0,255,0.012) 4px);
+      background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(191,0,255,.012) 2px,rgba(191,0,255,.012) 4px);
+    }
+
+    /* Profile avatar ring */
+    .avatar-ring {
+      border: 3px solid transparent;
+      background-clip: padding-box;
+      box-shadow: 0 0 0 3px #bf00ff, 0 0 20px rgba(191,0,255,.5);
+    }
+
+    /* Profile stat card glow */
+    .stat-card-glow {
+      box-shadow: 0 0 24px rgba(191,0,255,.12), inset 0 1px 0 rgba(255,255,255,.07);
+    }
+
+    /* Toast */
+    .toast-base {
+      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+      min-width: 280px; max-width: 360px; padding: 14px 18px; border-radius: 14px;
+      font-family: "Poppins",sans-serif; font-size: .8rem;
+      backdrop-filter: blur(24px);
+      display: flex; align-items: center; gap: 10px;
+      transition: all .4s cubic-bezier(.23,1,.32,1);
+    }
+    .toast-hidden { opacity: 0; transform: translateY(20px); pointer-events: none; }
+    .toast-show   { opacity: 1; transform: translateY(0); }
+
+    /* Mobile menu */
+    #mobileMenu { display: none; }
+    #mobileMenu.open { display: flex; }
+
+    .section-tag {
+      font-family: "DM Mono",monospace; font-size: .68rem;
+      letter-spacing: .3em; text-transform: uppercase;
+      color: var(--glow); opacity: .7;
+    }
+    .line-clamp-2 {
+      display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    /* Lightbox & modal overlay */
+    #lightbox, #updateWorksModal {
+      position: fixed; inset: 0; z-index: 10000;
+      background: rgba(0,0,0,.85); backdrop-filter: blur(8px);
+      align-items: center; justify-content: center; padding: 20px;
     }
 
     /* Scrollbar */
@@ -646,53 +891,24 @@
     ::-webkit-scrollbar-track { background: var(--bg); }
     ::-webkit-scrollbar-thumb { background: var(--mid); border-radius: 4px; }
 
-    /* Toast */
-    .toast-base {
-      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
-      min-width: 280px; max-width: 360px;
-      padding: 14px 18px; border-radius: 14px;
-      font-family: 'Poppins', sans-serif; font-size: 0.8rem;
-      backdrop-filter: blur(24px);
-      display: flex; align-items: center; gap: 10px;
-      transition: all 0.4s cubic-bezier(0.23,1,0.32,1);
-    }
-    .toast-hidden { opacity: 0; transform: translateY(20px); pointer-events: none; }
-    .toast-show { opacity: 1; transform: translateY(0); }
-
-    /* Mobile menu */
-    #mobileMenu { display: none; }
-    #mobileMenu.open { display: flex; }
-
-    /* Section tag */
-    .section-tag {
-      font-family: 'DM Mono', monospace;
-      font-size: 0.68rem; letter-spacing: 0.3em;
-      text-transform: uppercase; color: var(--glow); opacity: 0.7;
-    }
-
-    /* Line clamp */
-    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-
-    /* Lightbox */
-    #lightbox { position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 20px; }
-
-    /* Hero section */
-    .hero-section { min-height: 100vh; display: flex; align-items: center; position: relative; overflow: hidden; padding-top: 80px; }
+    /* Section spacing for sticky nav */
+    section[id] { scroll-margin-top: 80px; }
   </style>
 </head>
+
 <body>
 
-<!-- ════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════════════════
      TOAST
-═══════════════════════════════════════════════════════ -->
-<div id="toast" class="toast-base toast-hidden glass border border-purple-500 text-purple-300">
-  <i class="fa-solid fa-circle-info text-sm flex-shrink-0"></i>
+════════════════════════════════════════════════════════════════ -->
+<div id="toast" class="toast-base toast-hidden glass border border-purple-500/40 text-purple-300">
+  <i id="toastIcon" class="fa-solid fa-circle-info text-sm flex-shrink-0"></i>
   <span id="toastMsg"></span>
 </div>
 
-<!-- ════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════════════════
      LIGHTBOX
-═══════════════════════════════════════════════════════ -->
+════════════════════════════════════════════════════════════════ -->
 <div id="lightbox" class="hidden" onclick="if(event.target===this)closeLightbox()">
   <div class="glass rounded-2xl overflow-hidden max-w-3xl w-full relative">
     <button onclick="closeLightbox()" class="absolute top-4 right-4 z-10 btn-icon text-gray-400 hover:text-white">
@@ -706,9 +922,32 @@
   </div>
 </div>
 
-<!-- ════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════════════════
+     UPDATE WORKS MODAL
+════════════════════════════════════════════════════════════════ -->
+<div id="updateWorksModal" class="hidden" onclick="if(event.target===this)closeUpdateWorksModal()">
+  <div class="glass rounded-2xl p-8 max-w-sm w-full">
+    <div class="flex items-center justify-between mb-6">
+      <h3 id="uwModalTitle" class="font-bebas text-2xl text-white tracking-wider"></h3>
+      <button onclick="closeUpdateWorksModal()" class="btn-icon text-gray-500 hover:text-white">
+        <i class="fa-solid fa-xmark text-xs"></i>
+      </button>
+    </div>
+    <input type="hidden" id="uwUserId"/>
+    <div class="mb-6">
+      <label class="gfx-label">Total Paid Works Completed</label>
+      <input id="uwWorksCount" type="number" min="0" class="gfx-input" placeholder="0"/>
+    </div>
+    <button id="saveWorksBtn" onclick="saveUserWorks()"
+      class="btn-purple w-full py-3 rounded-xl font-poppins font-semibold text-sm text-white flex items-center justify-center gap-2">
+      <i class="fa-solid fa-trophy mr-1"></i> Save Works Count
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
      NAVBAR
-═══════════════════════════════════════════════════════ -->
+════════════════════════════════════════════════════════════════ -->
 <nav class="navbar-glass fixed top-0 left-0 right-0 z-50">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
 
@@ -720,31 +959,37 @@
       <span class="font-bebas text-white text-xl tracking-widest">LOKAYA<span class="text-purple-400">GFX</span></span>
     </button>
 
-    <!-- Desktop Nav -->
-    <div class="hidden md:flex items-center gap-6">
-      <a href="#armory" class="font-poppins text-xs font-medium tracking-widest uppercase text-gray-400 hover:text-purple-300 transition-colors">Armory</a>
-      <a href="#status-section" class="font-poppins text-xs font-medium tracking-widest uppercase text-gray-400 hover:text-purple-300 transition-colors">Live Status</a>
+    <!-- Desktop Links -->
+    <div class="hidden md:flex items-center gap-5">
+      <a href="#armory"         class="font-poppins text-xs font-medium tracking-widest uppercase text-gray-400 hover:text-purple-300 transition-colors">Armory</a>
+      <a href="#status-section" class="font-poppins text-xs font-medium tracking-widest uppercase text-gray-400 hover:text-purple-300 transition-colors">Status</a>
 
-      <!-- Admin only -->
-      <button id="adminBtn" onclick="showView('dashboard')"
+      <!-- Profile button (logged-in non-admin) -->
+      <button id="navProfileBtn" onclick="showView('profile')"
+        class="hidden btn-liquid px-4 py-2 rounded-lg font-poppins font-semibold text-xs tracking-wider text-purple-300 uppercase flex items-center gap-2">
+        <i class="fa-solid fa-user text-xs"></i> My Profile
+      </button>
+
+      <!-- Admin Dashboard -->
+      <button id="navAdminBtn" onclick="showView('dashboard')"
         class="hidden btn-liquid px-4 py-2 rounded-lg font-poppins font-semibold text-xs tracking-wider text-purple-300 uppercase flex items-center gap-2">
         <i class="fa-solid fa-gauge-high text-xs"></i> Dashboard
       </button>
 
       <!-- Login -->
-      <button id="loginBtn" onclick="loginWithGoogle()"
+      <button id="navLoginBtn" onclick="loginWithGoogle()"
         class="btn-liquid px-4 py-2 rounded-lg font-poppins font-semibold text-xs tracking-wider text-purple-300 uppercase flex items-center gap-2">
-        <i class="fa-brands fa-google text-xs"></i> Admin Login
+        <i class="fa-brands fa-google text-xs"></i> Sign In
       </button>
 
       <!-- Logout -->
-      <button id="logoutBtn" onclick="logoutUser()"
-        class="hidden btn-icon text-gray-500 hover:text-red-400">
+      <button id="navLogoutBtn" onclick="logoutUser()"
+        class="hidden btn-icon text-gray-500 hover:text-red-400" title="Sign Out">
         <i class="fa-solid fa-right-from-bracket text-xs"></i>
       </button>
     </div>
 
-    <!-- Mobile hamburger -->
+    <!-- Hamburger -->
     <button class="md:hidden text-purple-300 text-lg" onclick="document.getElementById('mobileMenu').classList.toggle('open')">
       <i class="fa-solid fa-bars"></i>
     </button>
@@ -752,45 +997,53 @@
 
   <!-- Mobile Menu -->
   <div id="mobileMenu" class="flex-col gap-3 px-4 pb-4 md:hidden border-t border-purple-900/20">
-    <a href="#armory" class="font-poppins text-xs uppercase tracking-widest text-gray-400 py-1" onclick="document.getElementById('mobileMenu').classList.remove('open')">Armory</a>
-    <a href="#status-section" class="font-poppins text-xs uppercase tracking-widest text-gray-400 py-1" onclick="document.getElementById('mobileMenu').classList.remove('open')">Live Status</a>
-    <button id="adminBtnMob" onclick="showView('dashboard');document.getElementById('mobileMenu').classList.remove('open')"
-      class="hidden btn-liquid px-4 py-2 rounded-lg font-poppins text-xs text-purple-300 uppercase text-left">
-      <i class="fa-solid fa-gauge-high mr-2"></i> Dashboard
+    <a href="#armory" onclick="document.getElementById('mobileMenu').classList.remove('open')"
+       class="font-poppins text-xs uppercase tracking-widest text-gray-400 py-1">Armory</a>
+    <a href="#status-section" onclick="document.getElementById('mobileMenu').classList.remove('open')"
+       class="font-poppins text-xs uppercase tracking-widest text-gray-400 py-1">Live Status</a>
+
+    <button id="mNavProfileBtn" onclick="showView('profile');document.getElementById('mobileMenu').classList.remove('open')"
+      class="hidden btn-liquid px-4 py-2 rounded-lg font-poppins text-xs text-purple-300 uppercase text-left flex items-center gap-2">
+      <i class="fa-solid fa-user"></i> My Profile
     </button>
-    <button id="loginBtnMob" onclick="loginWithGoogle()"
-      class="btn-liquid px-4 py-2 rounded-lg font-poppins text-xs text-purple-300 uppercase text-left">
-      <i class="fa-brands fa-google mr-2"></i> Admin Login
+    <button id="mNavAdminBtn" onclick="showView('dashboard');document.getElementById('mobileMenu').classList.remove('open')"
+      class="hidden btn-liquid px-4 py-2 rounded-lg font-poppins text-xs text-purple-300 uppercase text-left flex items-center gap-2">
+      <i class="fa-solid fa-gauge-high"></i> Dashboard
+    </button>
+    <button id="mNavLoginBtn" onclick="loginWithGoogle()"
+      class="btn-liquid px-4 py-2 rounded-lg font-poppins text-xs text-purple-300 uppercase text-left flex items-center gap-2">
+      <i class="fa-brands fa-google"></i> Sign In with Google
+    </button>
+    <button id="mNavLogoutBtn" onclick="logoutUser()"
+      class="hidden btn-liquid px-4 py-2 rounded-lg font-poppins text-xs text-red-400 uppercase text-left flex items-center gap-2">
+      <i class="fa-solid fa-right-from-bracket"></i> Sign Out
     </button>
   </div>
 </nav>
 
-<!-- ════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════════════════
      PUBLIC VIEW
-═══════════════════════════════════════════════════════ -->
+════════════════════════════════════════════════════════════════ -->
 <div id="public" class="view">
 
-  <!-- ── HERO ─────────────────────────────────────── -->
-  <section class="hero-section px-4 sm:px-6">
+  <!-- HERO -->
+  <section class="relative min-h-screen flex items-center pt-16 overflow-hidden px-4 sm:px-6">
     <div class="scanline"></div>
-
-    <!-- Orbs -->
     <div class="absolute top-24 left-1/4 w-80 h-80 rounded-full opacity-20 blur-3xl pointer-events-none"
-         style="background: radial-gradient(circle, #bf00ff, transparent)"></div>
-    <div class="absolute bottom-24 right-1/4 w-60 h-60 rounded-full opacity-10 blur-3xl pointer-events-none"
-         style="background: radial-gradient(circle, #7b00cc, transparent)"></div>
+         style="background:radial-gradient(circle,#bf00ff,transparent)"></div>
+    <div class="absolute bottom-24 right-1/4 w-56 h-56 rounded-full opacity-10 blur-3xl pointer-events-none"
+         style="background:radial-gradient(circle,#7b00cc,transparent)"></div>
 
     <div class="max-w-7xl mx-auto w-full py-20 grid md:grid-cols-2 gap-12 items-center relative z-10">
-      <!-- Text -->
       <div>
         <p class="section-tag mb-5">⚡ Free Fire Design Studio</p>
-        <h1 class="font-bebas text-7xl sm:text-8xl lg:text-9xl leading-none mb-6">
+        <h1 class="font-bebas leading-none mb-6" style="font-size:clamp(4.5rem,10vw,7rem)">
           <span class="block text-white">LEVEL UP</span>
           <span class="block shimmer-text">YOUR</span>
           <span class="block text-white neon-text">IDENTITY</span>
         </h1>
-        <p class="font-poppins text-gray-400 text-base max-w-md mb-10 leading-relaxed">
-          Premium Free Fire logos, banners & overlays — crafted for squads that demand elite visual presence. No compromises. Only dominance.
+        <p class="font-poppins text-gray-400 text-sm max-w-md mb-10 leading-relaxed">
+          Premium Free Fire logos, banners &amp; overlays — crafted for squads that demand elite visual presence.
         </p>
         <div class="flex flex-wrap gap-4 items-center">
           <a href="https://lokayagfx.netlify.app/" target="_blank"
@@ -819,29 +1072,28 @@
         </div>
       </div>
 
-      <!-- Visual -->
+      <!-- Hero visual -->
       <div class="flex justify-center">
         <div class="float">
-          <div class="glass rounded-2xl p-2 w-72 h-72 sm:w-80 sm:h-80 flex items-center justify-center relative overflow-hidden"
-               style="background: rgba(191,0,255,0.05)">
-            <div class="absolute inset-0 rounded-2xl" style="background: radial-gradient(circle at 50% 30%, rgba(191,0,255,0.18), transparent 60%)"></div>
+          <div class="glass rounded-2xl w-72 h-72 sm:w-80 sm:h-80 flex items-center justify-center relative overflow-hidden"
+               style="background:rgba(191,0,255,.05)">
+            <div class="absolute inset-0 rounded-2xl" style="background:radial-gradient(circle at 50% 30%,rgba(191,0,255,.18),transparent 60%)"></div>
             <div class="relative z-10 text-center">
-              <div class="text-9xl mb-3" style="filter: drop-shadow(0 0 30px #bf00ff) drop-shadow(0 0 60px #7b00cc)">🔥</div>
+              <div class="text-9xl mb-3" style="filter:drop-shadow(0 0 30px #bf00ff) drop-shadow(0 0 60px #7b00cc)">🔥</div>
               <p class="font-bebas text-xl text-white tracking-widest">LOKAYA GFX</p>
               <p class="font-mono text-xs text-purple-400 mt-1 tracking-widest">ELITE DESIGN STUDIO</p>
             </div>
-            <!-- Corner accents -->
-            <div class="absolute top-3 left-3 w-5 h-5 border-t border-l border-purple-500 rounded-tl opacity-60"></div>
-            <div class="absolute top-3 right-3 w-5 h-5 border-t border-r border-purple-500 rounded-tr opacity-60"></div>
-            <div class="absolute bottom-3 left-3 w-5 h-5 border-b border-l border-purple-500 rounded-bl opacity-60"></div>
-            <div class="absolute bottom-3 right-3 w-5 h-5 border-b border-r border-purple-500 rounded-br opacity-60"></div>
+            <div class="absolute top-3 left-3 w-5 h-5 border-t border-l border-purple-500 opacity-60"></div>
+            <div class="absolute top-3 right-3 w-5 h-5 border-t border-r border-purple-500 opacity-60"></div>
+            <div class="absolute bottom-3 left-3 w-5 h-5 border-b border-l border-purple-500 opacity-60"></div>
+            <div class="absolute bottom-3 right-3 w-5 h-5 border-b border-r border-purple-500 opacity-60"></div>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ── PORTFOLIO (THE ARMORY) ────────────────────── -->
+  <!-- ARMORY -->
   <section id="armory" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
     <div class="text-center mb-14">
       <p class="section-tag mb-3">— Portfolio —</p>
@@ -853,19 +1105,17 @@
     </div>
   </section>
 
-  <!-- ── LIVE STATUS TRACKER ───────────────────────── -->
+  <!-- LIVE STATUS -->
   <section id="status-section" class="py-24 relative">
     <div class="absolute inset-0 pointer-events-none opacity-5"
-         style="background: radial-gradient(ellipse 60% 60% at 80% 50%, #bf00ff, transparent)"></div>
+         style="background:radial-gradient(ellipse 60% 60% at 80% 50%,#bf00ff,transparent)"></div>
     <div class="max-w-4xl mx-auto px-4 sm:px-6 relative z-10">
       <div class="text-center mb-14">
         <p class="section-tag mb-3">— Live Updates —</p>
         <h2 class="font-bebas text-5xl sm:text-6xl text-white">ACTIVE <span class="shimmer-text">PROJECTS</span></h2>
-        <p class="font-poppins text-gray-500 text-sm mt-3">Real-time status of ongoing missions</p>
+        <p class="font-poppins text-gray-500 text-sm mt-3">Real-time mission status</p>
       </div>
-
       <div class="glass-card rounded-2xl p-6 sm:p-8">
-        <!-- Status header -->
         <div class="flex items-center justify-between mb-8">
           <div class="flex items-center gap-2">
             <div class="glow-dot"></div>
@@ -873,7 +1123,6 @@
           </div>
           <span class="badge">Live</span>
         </div>
-
         <div id="statusContainer" class="flex flex-col gap-5">
           <div class="flex justify-center py-10"><div class="spinner"></div></div>
         </div>
@@ -881,7 +1130,28 @@
     </div>
   </section>
 
-  <!-- ── FOOTER ────────────────────────────────────── -->
+  <!-- CTA / Login prompt for customers -->
+  <section class="py-20 relative z-10">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6">
+      <div class="glass-card rounded-3xl p-8 sm:p-12 text-center relative overflow-hidden">
+        <div class="absolute inset-0 pointer-events-none"
+             style="background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(191,0,255,.1),transparent)"></div>
+        <div class="relative z-10">
+          <i class="fa-solid fa-user-astronaut text-purple-400 text-4xl mb-4"></i>
+          <h2 class="font-bebas text-4xl sm:text-5xl text-white mb-3">TRACK YOUR <span class="shimmer-text">ORDER</span></h2>
+          <p class="font-poppins text-gray-400 text-sm max-w-md mx-auto mb-8">
+            Sign in with Google to access your personal profile, track live order progress, and view your completed work history.
+          </p>
+          <button onclick="loginWithGoogle()"
+            class="btn-liquid px-8 py-4 rounded-xl font-poppins font-bold text-sm text-white uppercase tracking-wider inline-flex items-center gap-3 pulse-glow">
+            <i class="fa-brands fa-google"></i> Sign In to View Your Orders
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
   <footer class="border-t border-purple-900/25 py-12 px-4 sm:px-6 relative z-10">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
       <div class="text-center sm:text-left">
@@ -893,17 +1163,17 @@
       </div>
       <div class="flex items-center gap-3">
         <a href="https://wa.me/your-number" target="_blank"
-           class="w-11 h-11 glass-card rounded-xl flex items-center justify-center hover:border-green-500 transition-colors">
+           class="w-11 h-11 glass-card rounded-xl flex items-center justify-center hover:border-green-500/60 transition-colors">
           <i class="fa-brands fa-whatsapp text-green-400"></i>
         </a>
         <a href="https://discord.gg/your-server" target="_blank"
-           class="w-11 h-11 glass-card rounded-xl flex items-center justify-center hover:border-indigo-400 transition-colors">
+           class="w-11 h-11 glass-card rounded-xl flex items-center justify-center hover:border-indigo-400/60 transition-colors">
           <i class="fa-brands fa-discord text-indigo-400"></i>
         </a>
-        <a href="#" class="w-11 h-11 glass-card rounded-xl flex items-center justify-center hover:border-pink-400 transition-colors">
+        <a href="#" class="w-11 h-11 glass-card rounded-xl flex items-center justify-center hover:border-pink-400/60 transition-colors">
           <i class="fa-brands fa-instagram text-pink-400"></i>
         </a>
-        <a href="#" class="w-11 h-11 glass-card rounded-xl flex items-center justify-center hover:border-red-400 transition-colors">
+        <a href="#" class="w-11 h-11 glass-card rounded-xl flex items-center justify-center hover:border-red-400/60 transition-colors">
           <i class="fa-brands fa-youtube text-red-400"></i>
         </a>
       </div>
@@ -911,228 +1181,339 @@
   </footer>
 </div><!-- /public -->
 
-<!-- ════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════════════════
+     CUSTOMER PROFILE VIEW
+════════════════════════════════════════════════════════════════ -->
+<div id="profile" class="view">
+  <div class="min-h-screen pt-20 pb-20 px-4 sm:px-6 relative z-10">
+    <div class="max-w-4xl mx-auto">
+
+      <!-- Back Button -->
+      <button onclick="showView('public')"
+        class="btn-liquid px-4 py-2 rounded-lg font-poppins text-xs text-gray-400 uppercase tracking-wider flex items-center gap-2 mb-8 mt-4">
+        <i class="fa-solid fa-arrow-left text-xs"></i> Back to Site
+      </button>
+
+      <!-- Profile Header Card -->
+      <div class="glass-card rounded-3xl p-6 sm:p-8 mb-6 relative overflow-hidden">
+        <!-- BG glow -->
+        <div class="absolute inset-0 pointer-events-none"
+             style="background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(191,0,255,.12),transparent 60%)"></div>
+        <!-- Corner accents -->
+        <div class="absolute top-4 left-4 w-8 h-8 border-t-2 border-l-2 border-purple-500/40 rounded-tl-lg"></div>
+        <div class="absolute top-4 right-4 w-8 h-8 border-t-2 border-r-2 border-purple-500/40 rounded-tr-lg"></div>
+        <div class="absolute bottom-4 left-4 w-8 h-8 border-b-2 border-l-2 border-purple-500/40 rounded-bl-lg"></div>
+        <div class="absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 border-purple-500/40 rounded-br-lg"></div>
+
+        <div class="relative z-10 flex flex-col sm:flex-row items-center sm:items-start gap-6">
+          <!-- Avatar -->
+          <div class="flex-shrink-0">
+            <img id="profileAvatar" src="https://placehold.co/100x100/1a0033/bf00ff?text=U" alt="Avatar"
+              class="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover avatar-ring"/>
+          </div>
+
+          <!-- Info -->
+          <div class="flex-1 text-center sm:text-left">
+            <p class="section-tag mb-2">Customer Profile</p>
+            <h1 id="profileName" class="font-bebas text-4xl sm:text-5xl text-white tracking-wider leading-none"></h1>
+            <p id="profileEmail" class="font-mono text-sm text-purple-400 mt-2"></p>
+            <div class="flex items-center justify-center sm:justify-start gap-2 mt-3">
+              <div class="glow-dot"></div>
+              <span class="font-mono text-xs text-green-400 uppercase tracking-widest">Active Member</span>
+            </div>
+          </div>
+
+          <!-- Sign out -->
+          <button onclick="logoutUser()"
+            class="flex-shrink-0 btn-liquid px-4 py-2 rounded-xl font-poppins text-xs text-red-400 uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-right-from-bracket text-xs"></i> Sign Out
+          </button>
+        </div>
+      </div>
+
+      <!-- Account Stats Row -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+
+        <!-- Joined Date -->
+        <div class="glass-card stat-card-glow rounded-2xl p-5 flex flex-col items-center text-center">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
+               style="background:rgba(191,0,255,.15);border:1px solid rgba(191,0,255,.3)">
+            <i class="fa-solid fa-calendar-days text-purple-400"></i>
+          </div>
+          <p class="font-mono text-xs text-gray-600 uppercase tracking-wider mb-1">Member Since</p>
+          <p id="profileJoined" class="font-poppins font-semibold text-white text-sm">—</p>
+        </div>
+
+        <!-- Paid Works -->
+        <div class="glass-card stat-card-glow rounded-2xl p-5 flex flex-col items-center text-center" style="border-color:rgba(191,0,255,.4)">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
+               style="background:rgba(191,0,255,.2);border:1px solid rgba(191,0,255,.5)">
+            <i class="fa-solid fa-trophy text-yellow-400"></i>
+          </div>
+          <p class="font-mono text-xs text-gray-600 uppercase tracking-wider mb-1">Paid Works Done</p>
+          <p id="profilePaidWorks" class="font-bebas text-4xl text-purple-300">0</p>
+        </div>
+
+        <!-- Active Orders -->
+        <div class="glass-card stat-card-glow rounded-2xl p-5 flex flex-col items-center text-center">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
+               style="background:rgba(191,0,255,.15);border:1px solid rgba(191,0,255,.3)">
+            <i class="fa-solid fa-layer-group text-purple-400"></i>
+          </div>
+          <p class="font-mono text-xs text-gray-600 uppercase tracking-wider mb-1">Status</p>
+          <p class="font-poppins font-semibold text-green-400 text-sm">Online</p>
+        </div>
+      </div>
+
+      <!-- Personal Order Tracker -->
+      <div class="glass-card rounded-2xl p-6 sm:p-8">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="font-bebas text-2xl sm:text-3xl text-white tracking-wider">MY ORDERS</h2>
+            <p class="font-mono text-xs text-purple-400 mt-1 tracking-wider">Personal order tracker — only you can see this</p>
+          </div>
+          <button onclick="loadUserOrders()" class="btn-icon text-gray-500 hover:text-purple-300" title="Refresh">
+            <i class="fa-solid fa-rotate-right text-xs"></i>
+          </button>
+        </div>
+
+        <!-- Privacy notice -->
+        <div class="flex items-start gap-3 p-4 rounded-xl mb-6"
+             style="background:rgba(191,0,255,.06);border:1px solid rgba(191,0,255,.2)">
+          <i class="fa-solid fa-shield-halved text-purple-400 text-sm mt-0.5 flex-shrink-0"></i>
+          <p class="font-poppins text-xs text-gray-400 leading-relaxed">
+            These orders are <strong class="text-purple-300">private to your account</strong>. 
+            Orders are linked to your email by the admin. Only <strong class="text-purple-300">you</strong> can see your orders here.
+          </p>
+        </div>
+
+        <div id="userOrdersCont" class="flex flex-col gap-4">
+          <div class="flex justify-center py-10"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div><!-- /profile -->
+
+<!-- ═══════════════════════════════════════════════════════════
      ADMIN DASHBOARD VIEW
-═══════════════════════════════════════════════════════ -->
+════════════════════════════════════════════════════════════════ -->
 <div id="dashboard" class="view">
-  <div class="min-h-screen pt-20 pb-16 px-4 sm:px-6 max-w-7xl mx-auto relative z-10">
+  <div class="min-h-screen pt-20 pb-16 px-4 sm:px-6 relative z-10">
+    <div class="max-w-7xl mx-auto">
 
-    <!-- Dash Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-      <div>
-        <p class="section-tag mb-1">Admin Panel</p>
-        <h1 class="font-bebas text-4xl sm:text-5xl text-white tracking-wider">COMMAND <span class="text-purple-400">CENTER</span></h1>
+      <!-- Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 mt-4">
+        <div>
+          <p class="section-tag mb-1">Admin Panel</p>
+          <h1 class="font-bebas text-4xl sm:text-5xl text-white tracking-wider">COMMAND <span class="text-purple-400">CENTER</span></h1>
+        </div>
+        <div class="flex items-center gap-3">
+          <button onclick="showView('public')"
+            class="btn-liquid px-4 py-2 rounded-lg font-poppins text-xs text-gray-400 uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-arrow-left text-xs"></i> Site
+          </button>
+          <button onclick="logoutUser()"
+            class="btn-liquid px-4 py-2 rounded-lg font-poppins text-xs text-red-400 uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-right-from-bracket text-xs"></i> Sign Out
+          </button>
+        </div>
       </div>
-      <div class="flex items-center gap-3">
-        <button onclick="showView('public')"
-          class="btn-liquid px-4 py-2 rounded-lg font-poppins text-xs text-gray-400 uppercase tracking-wider flex items-center gap-2">
-          <i class="fa-solid fa-arrow-left text-xs"></i> Back to Site
+
+      <!-- Quick Stats -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+        <div class="glass-card rounded-xl p-5 text-center">
+          <i class="fa-solid fa-images text-purple-400 mb-2 text-lg"></i>
+          <p class="font-bebas text-3xl text-white" id="statPortfolio">—</p>
+          <p class="font-mono text-xs text-gray-600 uppercase tracking-wider mt-1">Portfolio</p>
+        </div>
+        <div class="glass-card rounded-xl p-5 text-center">
+          <i class="fa-solid fa-chart-simple text-purple-400 mb-2 text-lg"></i>
+          <p class="font-bebas text-3xl text-white" id="statStatus">—</p>
+          <p class="font-mono text-xs text-gray-600 uppercase tracking-wider mt-1">Projects</p>
+        </div>
+        <div class="glass-card rounded-xl p-5 text-center">
+          <i class="fa-solid fa-users text-purple-400 mb-2 text-lg"></i>
+          <p class="font-bebas text-3xl text-white" id="statUsers">—</p>
+          <p class="font-mono text-xs text-gray-600 uppercase tracking-wider mt-1">Users</p>
+        </div>
+        <div class="glass-card rounded-xl p-5 text-center">
+          <i class="fa-solid fa-fire text-orange-400 mb-2 text-lg"></i>
+          <p class="font-bebas text-3xl text-white">LIVE</p>
+          <p class="font-mono text-xs text-gray-600 uppercase tracking-wider mt-1">System</p>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex flex-wrap gap-3 mb-8">
+        <button id="tab-dash" onclick="showDash('dash')"
+          class="dash-tab tab-active btn-liquid px-5 py-2.5 rounded-xl font-poppins font-semibold text-xs uppercase tracking-wider text-purple-300 flex items-center gap-2">
+          <i class="fa-solid fa-images"></i> Portfolio
         </button>
-        <button onclick="logoutUser()"
-          class="btn-liquid px-4 py-2 rounded-lg font-poppins text-xs text-red-400 uppercase tracking-wider flex items-center gap-2">
-          <i class="fa-solid fa-right-from-bracket text-xs"></i> Sign Out
+        <button id="tab-status" onclick="showDash('status')"
+          class="dash-tab btn-liquid px-5 py-2.5 rounded-xl font-poppins font-semibold text-xs uppercase tracking-wider text-gray-400 flex items-center gap-2">
+          <i class="fa-solid fa-chart-simple"></i> Status
+        </button>
+        <button id="tab-users" onclick="showDash('users');loadAdminUsers()"
+          class="dash-tab btn-liquid px-5 py-2.5 rounded-xl font-poppins font-semibold text-xs uppercase tracking-wider text-gray-400 flex items-center gap-2">
+          <i class="fa-solid fa-users"></i> Users
         </button>
       </div>
-    </div>
 
-    <!-- Dash Tabs -->
-    <div class="flex gap-3 mb-8">
-      <button id="tab-dash" onclick="showDash('dash')"
-        class="dash-tab tab-active btn-liquid px-5 py-2.5 rounded-xl font-poppins font-semibold text-xs uppercase tracking-wider text-purple-300 flex items-center gap-2">
-        <i class="fa-solid fa-images"></i> Portfolio Manager
-      </button>
-      <button id="tab-status" onclick="showDash('status')"
-        class="dash-tab btn-liquid px-5 py-2.5 rounded-xl font-poppins font-semibold text-xs uppercase tracking-wider text-gray-400 flex items-center gap-2">
-        <i class="fa-solid fa-chart-simple"></i> Status Manager
-      </button>
-    </div>
+      <!-- ── PORTFOLIO MANAGER ──────────────────────── -->
+      <div id="dashSection" class="dash-section">
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
-    <!-- ── PORTFOLIO MANAGER ──────────────────────── -->
-    <div id="dashSection" class="dash-section">
-      <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
-
-        <!-- Add/Edit Form -->
-        <div id="portfolioForm" class="lg:col-span-2 glass-card rounded-2xl p-6 h-fit">
-          <h2 class="font-bebas text-2xl text-white tracking-wider mb-6 flex items-center gap-2">
-            <i class="fa-solid fa-plus text-purple-400 text-lg"></i> Add to Armory
-          </h2>
-          <input type="hidden" id="editPortfolioId"/>
-
-          <div class="flex flex-col gap-4">
-            <div>
-              <label class="gfx-label">Title *</label>
-              <input id="pTitle" type="text" class="gfx-input" placeholder="e.g. Skull Squad Logo"/>
+          <!-- Form -->
+          <div id="portfolioForm" class="lg:col-span-2 glass-card rounded-2xl p-6 h-fit">
+            <h2 class="font-bebas text-2xl text-white tracking-wider mb-6 flex items-center gap-2">
+              <i class="fa-solid fa-plus text-purple-400"></i> Add to Armory
+            </h2>
+            <input type="hidden" id="editPortfolioId"/>
+            <div class="flex flex-col gap-4">
+              <div>
+                <label class="gfx-label">Title *</label>
+                <input id="pTitle" type="text" class="gfx-input" placeholder="e.g. Skull Squad Logo"/>
+              </div>
+              <div>
+                <label class="gfx-label">Description</label>
+                <textarea id="pDesc" class="gfx-input" rows="3" placeholder="Short description..."></textarea>
+              </div>
+              <div>
+                <label class="gfx-label">Image URL *</label>
+                <input id="pImg" type="url" class="gfx-input" placeholder="https://i.imgur.com/..."/>
+                <p class="font-poppins text-xs text-gray-700 mt-1">Use Imgur, imgbb or any direct image link.</p>
+              </div>
+              <div>
+                <label class="gfx-label">Category</label>
+                <select id="pCat" class="gfx-input">
+                  <option value="">— Select —</option>
+                  <option value="Logo">Logo</option>
+                  <option value="Banner">Banner</option>
+                  <option value="Thumbnail">Thumbnail</option>
+                  <option value="Overlay">Overlay</option>
+                  <option value="Clan Kit">Clan Kit</option>
+                  <option value="Profile Kit">Profile Kit</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label class="gfx-label">Description</label>
-              <textarea id="pDesc" class="gfx-input resize-none" rows="3" placeholder="Short description of the work..."></textarea>
-            </div>
-            <div>
-              <label class="gfx-label">Image URL *</label>
-              <input id="pImg" type="url" class="gfx-input" placeholder="https://i.imgur.com/..."/>
-              <p class="font-poppins text-xs text-gray-600 mt-1">Use Imgur, imgbb, or any direct image URL.</p>
-            </div>
-            <div>
-              <label class="gfx-label">Category</label>
-              <select id="pCat" class="gfx-input">
-                <option value="">— Select Category —</option>
-                <option value="Logo">Logo</option>
-                <option value="Banner">Banner</option>
-                <option value="Thumbnail">Thumbnail</option>
-                <option value="Overlay">Overlay</option>
-                <option value="Clan Kit">Clan Kit</option>
-                <option value="Profile Kit">Profile Kit</option>
-              </select>
+            <div class="flex gap-3 mt-6">
+              <button id="savePortfolioBtn" onclick="savePortfolioItem()"
+                class="btn-purple flex-1 px-4 py-3 rounded-xl font-poppins font-semibold text-xs tracking-wider text-white uppercase flex items-center justify-center">
+                <i class="fa-solid fa-plus mr-2"></i>Add to Armory
+              </button>
+              <button id="cancelEditPortfolio" onclick="cancelPortfolioEdit()"
+                class="hidden btn-liquid px-4 py-3 rounded-xl font-poppins text-xs text-gray-400 uppercase">
+                Cancel
+              </button>
             </div>
           </div>
 
-          <div class="flex gap-3 mt-6">
-            <button id="savePortfolioBtn" onclick="savePortfolioItem()"
-              class="btn-purple flex-1 px-4 py-3 rounded-xl font-poppins font-semibold text-xs tracking-wider text-white uppercase flex items-center justify-center gap-2">
-              <i class="fa-solid fa-plus mr-2"></i>Add to Armory
-            </button>
-            <button id="cancelEditPortfolio" onclick="cancelPortfolioEdit()"
-              class="hidden btn-liquid px-4 py-3 rounded-xl font-poppins text-xs text-gray-400 uppercase">
-              Cancel
-            </button>
+          <!-- List -->
+          <div class="lg:col-span-3 glass-card rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-6">
+              <h2 class="font-bebas text-2xl text-white tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-layer-group text-purple-400"></i> Portfolio Items
+              </h2>
+              <button onclick="loadDashboardPortfolio()" class="btn-icon text-gray-500 hover:text-purple-300">
+                <i class="fa-solid fa-rotate-right text-xs"></i>
+              </button>
+            </div>
+            <div id="dashPortfolioList" class="flex flex-col gap-3 max-h-[600px] overflow-y-auto pr-1">
+              <div class="flex justify-center py-10"><div class="spinner"></div></div>
+            </div>
           </div>
         </div>
+      </div>
 
-        <!-- Item List -->
-        <div class="lg:col-span-3 glass-card rounded-2xl p-6">
-          <div class="flex items-center justify-between mb-6">
-            <h2 class="font-bebas text-2xl text-white tracking-wider flex items-center gap-2">
-              <i class="fa-solid fa-layer-group text-purple-400 text-lg"></i> Current Portfolio
+      <!-- ── STATUS MANAGER ────────────────────────── -->
+      <div id="statusSection" class="dash-section">
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+          <!-- Form -->
+          <div id="statusForm" class="lg:col-span-2 glass-card rounded-2xl p-6 h-fit">
+            <h2 class="font-bebas text-2xl text-white tracking-wider mb-6 flex items-center gap-2">
+              <i class="fa-solid fa-plus text-purple-400"></i> Add Status
             </h2>
-            <button onclick="loadDashboardPortfolio()" class="btn-icon text-gray-500 hover:text-purple-300">
+            <input type="hidden" id="editStatusId"/>
+            <div class="flex flex-col gap-4">
+              <div>
+                <label class="gfx-label">Client Name *</label>
+                <input id="sClient" type="text" class="gfx-input" placeholder="e.g. @GarenFire_YT"/>
+              </div>
+              <div>
+                <label class="gfx-label">Project Title</label>
+                <input id="sProject" type="text" class="gfx-input" placeholder="e.g. Squad Logo Design"/>
+              </div>
+              <div>
+                <label class="gfx-label">Customer Email <span class="text-purple-500">(links to profile)</span></label>
+                <input id="sCustomerEmail" type="email" class="gfx-input" placeholder="customer@gmail.com"/>
+                <p class="font-poppins text-xs text-gray-700 mt-1">Customer will see this order on their profile.</p>
+              </div>
+              <div>
+                <label class="gfx-label">Progress Level</label>
+                <select id="sProgress" class="gfx-input">
+                  <option value="10">10% — Starting</option>
+                  <option value="25">25% — In Progress</option>
+                  <option value="50" selected>50% — Halfway</option>
+                  <option value="75">75% — Almost Done</option>
+                  <option value="100">100% — Complete ✓</option>
+                </select>
+              </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+              <button id="saveStatusBtn" onclick="saveStatusItem()"
+                class="btn-purple flex-1 px-4 py-3 rounded-xl font-poppins font-semibold text-xs tracking-wider text-white uppercase flex items-center justify-center">
+                <i class="fa-solid fa-plus mr-2"></i>Add Status
+              </button>
+              <button id="cancelEditStatus" onclick="cancelStatusEdit()"
+                class="hidden btn-liquid px-4 py-3 rounded-xl font-poppins text-xs text-gray-400 uppercase">
+                Cancel
+              </button>
+            </div>
+          </div>
+
+          <!-- List -->
+          <div class="lg:col-span-3 glass-card rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-6">
+              <h2 class="font-bebas text-2xl text-white tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-chart-simple text-purple-400"></i> Active Projects
+              </h2>
+              <button onclick="loadDashboardStatus()" class="btn-icon text-gray-500 hover:text-purple-300">
+                <i class="fa-solid fa-rotate-right text-xs"></i>
+              </button>
+            </div>
+            <div id="dashStatusList" class="flex flex-col gap-3 max-h-[600px] overflow-y-auto pr-1">
+              <div class="flex justify-center py-10"><div class="spinner"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── USER MANAGER ───────────────────────────── -->
+      <div id="usersSection" class="dash-section">
+        <div class="glass-card rounded-2xl p-6">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="font-bebas text-2xl text-white tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-users text-purple-400"></i> Registered Users
+              </h2>
+              <p class="font-mono text-xs text-gray-600 mt-1">Manage customer accounts and paid works count</p>
+            </div>
+            <button onclick="loadAdminUsers()" class="btn-icon text-gray-500 hover:text-purple-300">
               <i class="fa-solid fa-rotate-right text-xs"></i>
             </button>
           </div>
-          <div id="dashPortfolioList" class="flex flex-col gap-3 max-h-[600px] overflow-y-auto pr-1">
+          <div id="adminUserList" class="flex flex-col gap-4 max-h-[700px] overflow-y-auto pr-1">
             <div class="flex justify-center py-10"><div class="spinner"></div></div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- ── STATUS MANAGER ────────────────────────── -->
-    <div id="statusSection" class="dash-section">
-      <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
-
-        <!-- Add/Edit Form -->
-        <div id="statusForm" class="lg:col-span-2 glass-card rounded-2xl p-6 h-fit">
-          <h2 class="font-bebas text-2xl text-white tracking-wider mb-6 flex items-center gap-2">
-            <i class="fa-solid fa-plus text-purple-400 text-lg"></i> Add Status
-          </h2>
-          <input type="hidden" id="editStatusId"/>
-
-          <div class="flex flex-col gap-4">
-            <div>
-              <label class="gfx-label">Client Name *</label>
-              <input id="sClient" type="text" class="gfx-input" placeholder="e.g. @GarenFire_YT"/>
-            </div>
-            <div>
-              <label class="gfx-label">Project Title</label>
-              <input id="sProject" type="text" class="gfx-input" placeholder="e.g. Squad Logo Design"/>
-            </div>
-            <div>
-              <label class="gfx-label">Progress Level</label>
-              <select id="sProgress" class="gfx-input">
-                <option value="10">10% — Starting</option>
-                <option value="25">25% — In Progress</option>
-                <option value="50" selected>50% — Halfway</option>
-                <option value="75">75% — Almost Done</option>
-                <option value="100">100% — Complete ✓</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="flex gap-3 mt-6">
-            <button id="saveStatusBtn" onclick="saveStatusItem()"
-              class="btn-purple flex-1 px-4 py-3 rounded-xl font-poppins font-semibold text-xs tracking-wider text-white uppercase flex items-center justify-center gap-2">
-              <i class="fa-solid fa-plus mr-2"></i>Add Status
-            </button>
-            <button id="cancelEditStatus" onclick="cancelStatusEdit()"
-              class="hidden btn-liquid px-4 py-3 rounded-xl font-poppins text-xs text-gray-400 uppercase">
-              Cancel
-            </button>
-          </div>
-        </div>
-
-        <!-- Status List -->
-        <div class="lg:col-span-3 glass-card rounded-2xl p-6">
-          <div class="flex items-center justify-between mb-6">
-            <h2 class="font-bebas text-2xl text-white tracking-wider flex items-center gap-2">
-              <i class="fa-solid fa-chart-simple text-purple-400 text-lg"></i> Active Projects
-            </h2>
-            <button onclick="loadDashboardStatus()" class="btn-icon text-gray-500 hover:text-purple-300">
-              <i class="fa-solid fa-rotate-right text-xs"></i>
-            </button>
-          </div>
-          <div id="dashStatusList" class="flex flex-col gap-3 max-h-[600px] overflow-y-auto pr-1">
-            <div class="flex justify-center py-10"><div class="spinner"></div></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Quick Stats -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8">
-      <div class="glass-card rounded-xl p-5 text-center">
-        <i class="fa-solid fa-images text-purple-400 mb-2 text-lg"></i>
-        <p class="font-bebas text-3xl text-white" id="statPortfolio">—</p>
-        <p class="font-mono text-xs text-gray-600 uppercase tracking-wider mt-1">Portfolio Items</p>
-      </div>
-      <div class="glass-card rounded-xl p-5 text-center">
-        <i class="fa-solid fa-chart-simple text-purple-400 mb-2 text-lg"></i>
-        <p class="font-bebas text-3xl text-white" id="statStatus">—</p>
-        <p class="font-mono text-xs text-gray-600 uppercase tracking-wider mt-1">Active Projects</p>
-      </div>
-      <div class="glass-card rounded-xl p-5 text-center">
-        <i class="fa-solid fa-fire text-orange-400 mb-2 text-lg"></i>
-        <p class="font-bebas text-3xl text-white">LIVE</p>
-        <p class="font-mono text-xs text-gray-600 uppercase tracking-wider mt-1">System Status</p>
-      </div>
-      <div class="glass-card rounded-xl p-5 text-center">
-        <i class="fa-brands fa-google text-blue-400 mb-2 text-lg"></i>
-        <p class="font-bebas text-3xl text-white">ADMIN</p>
-        <p class="font-mono text-xs text-gray-600 uppercase tracking-wider mt-1">Auth Mode</p>
-      </div>
     </div>
   </div>
 </div><!-- /dashboard -->
 
-<script>
-  // Update stats counts when dashboard loads
-  const origLoad = window.loadDashboardPortfolio;
-  document.addEventListener("DOMContentLoaded", () => {
-    // Patch stats after load
-    const patchStats = () => {
-      setTimeout(() => {
-        document.getElementById("statPortfolio").textContent = (window.portfolioItems||[]).length || "0";
-        document.getElementById("statStatus").textContent = (window.statusItems||[]).length || "0";
-      }, 1500);
-    };
-    // Patch mobile admin buttons to mirror desktop state
-    const syncMobileButtons = () => {
-      setInterval(() => {
-        const adminHidden = document.getElementById("adminBtn").classList.contains("hidden");
-        const adminBtnMob = document.getElementById("adminBtnMob");
-        const loginBtnMob = document.getElementById("loginBtnMob");
-        if (adminBtnMob) {
-          if (adminHidden) { adminBtnMob.classList.add("hidden"); loginBtnMob.classList.remove("hidden"); }
-          else { adminBtnMob.classList.remove("hidden"); loginBtnMob.classList.add("hidden"); }
-        }
-      }, 500);
-    };
-    patchStats();
-    syncMobileButtons();
-  });
-
-  // Close lightbox on escape
-  document.addEventListener("keydown", e => {
-    if (e.key === "Escape") closeLightbox();
-  });
-</script>
 </body>
 </html>

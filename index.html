@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>LOKAYA GFX — Elite Design Studio</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@300;400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 
@@ -384,21 +385,20 @@
           createdAt: serverTimestamp()
         });
 
-        // 2. Send email via FormSubmit (free, no backend needed)
-        const formData = new FormData();
-        formData.append("_subject", `🔥 New Order — ${design} — ${name}`);
-        formData.append("_template", "table");
-        formData.append("_captcha", "false");
-        formData.append("Customer Name", name);
-        formData.append("Customer Email", email);
-        formData.append("Phone / Discord", phone || "Not provided");
-        formData.append("Design Requested", design);
-        formData.append("Description", desc);
-        formData.append("Budget", budget || "Not specified");
-
-        await fetch(`https://formsubmit.co/${ORDER_EMAIL}`, {
-          method: "POST", body: formData
-        });
+        // 2. Send email via EmailJS
+        await emailjs.send(
+          "service_15lr4e2",
+          "template_75cqknk",
+          {
+            name:   name,
+            email:  email,
+            phone:  phone  || "Not provided",
+            design: design,
+            desc:   desc,
+            budget: budget || "Not specified"
+          },
+          "b2edP5F5TK6fOfui3"
+        );
 
         // Show success
         document.getElementById("orderFormInner").classList.add("hidden");
@@ -1064,6 +1064,7 @@
     function escAttr(s){return String(s||"").replace(/'/g,"&#39;").replace(/"/g,"&quot;").replace(/\n/g,"\\n");}
 
     document.addEventListener("DOMContentLoaded",()=>{
+      emailjs.init("b2edP5F5TK6fOfui3");
       loadSiteSettings();
       showView("public");
       document.addEventListener("keydown",e=>{
@@ -1299,7 +1300,7 @@
                style="background:rgba(191,0,255,.06);border:1px solid rgba(191,0,255,.15)">
             <i class="fa-solid fa-shield-halved text-purple-500 text-xs mt-0.5 flex-shrink-0"></i>
             <p class="font-poppins text-xs text-gray-500 leading-relaxed">
-              Your order will be sent to <strong class="text-purple-400">lokayafx@gmail.com</strong> and saved securely. We'll reply within 24 hours.
+              Your order will be sent to <strong class="text-purple-400"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="066a696d677f67607e46616b676f6a2865696b">[email&#160;protected]</a></strong> and saved securely. We'll reply within 24 hours.
             </p>
           </div>
 
@@ -1978,14 +1979,4 @@
 
           <button id="saveLogoBtn" onclick="saveLogoUrl()"
             class="btn-purple w-full py-3.5 rounded-xl font-poppins font-bold text-sm text-white flex items-center justify-center gap-2">
-            <i class="fa-solid fa-floppy-disk"></i> Save Logo
-          </button>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div><!-- /dashboard -->
-
-</body>
-</html>
+            <i class="fa-solid fa-floppy-disk"></i> S

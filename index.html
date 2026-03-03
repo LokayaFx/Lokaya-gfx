@@ -379,14 +379,16 @@
 
       try {
         // 1. Save order to Firestore
-        await addDoc(collection(db, "orders"), {
-          name, email, phone, design, desc, budget,
-          status: "pending",
-          createdAt: serverTimestamp()
-        });
+        try {
+          await addDoc(collection(db, "orders"), {
+            name, email, phone, design, desc, budget,
+            status: "pending",
+            createdAt: serverTimestamp()
+          });
+        } catch(fsErr) { console.warn("Firestore save failed:", fsErr); }
 
         // 2. Send email via EmailJS
-        await emailjs.send(
+        const result = await emailjs.send(
           "service_15lr4e2",
           "template_75cqknk",
           {
@@ -400,12 +402,15 @@
           "b2edP5F5TK6fOfui3"
         );
 
+        console.log("EmailJS result:", result);
+
         // Show success
         document.getElementById("orderFormInner").classList.add("hidden");
         document.getElementById("orderSuccess").classList.remove("hidden");
         showToast("Order sent! ✓", "success");
       } catch(e) {
-        showToast("Error sending order: " + e.message, "error");
+        console.error("EmailJS error:", e);
+        showToast("Error: " + (e?.text || e?.message || JSON.stringify(e)), "error");
       }
       setBtnLoading("submitOrderBtn", false);
     };

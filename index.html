@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>LOKAYA GFX — Elite Design Studio</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@300;400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 
@@ -378,39 +377,40 @@
       showToast("Sending order...", "info");
 
       try {
-        // 1. Save order to Firestore
+        // Save order to Firestore
         try {
           await addDoc(collection(db, "orders"), {
             name, email, phone, design, desc, budget,
             status: "pending",
             createdAt: serverTimestamp()
           });
-        } catch(fsErr) { console.warn("Firestore save failed:", fsErr); }
+        } catch(fsErr) { console.warn("Firestore:", fsErr); }
 
-        // 2. Send email via EmailJS
-        const result = await emailjs.send(
-          "service_15lr4e2",
-          "template_75cqknk",
-          {
-            name:   name,
-            email:  email,
-            phone:  phone  || "Not provided",
-            design: design,
-            desc:   desc,
-            budget: budget || "Not specified"
-          },
-          "b2edP5F5TK6fOfui3"
+        // Build mailto link and open Gmail
+        const subject = encodeURIComponent(`🔥 New Order — ${design} — ${name}`);
+        const body = encodeURIComponent(
+`New Order Received!
+================================
+Customer : ${name}
+Email    : ${email}
+Phone    : ${phone || "Not provided"}
+Design   : ${design}
+Budget   : ${budget || "Not specified"}
+================================
+Description:
+${desc}
+================================
+Reply to customer: ${email}`
         );
 
-        console.log("EmailJS result:", result);
+        window.location.href = `mailto:lokayafx@gmail.com?subject=${subject}&body=${body}`;
 
         // Show success
         document.getElementById("orderFormInner").classList.add("hidden");
         document.getElementById("orderSuccess").classList.remove("hidden");
         showToast("Order sent! ✓", "success");
       } catch(e) {
-        console.error("EmailJS error:", e);
-        showToast("Error: " + (e?.text || e?.message || JSON.stringify(e)), "error");
+        showToast("Error: " + e.message, "error");
       }
       setBtnLoading("submitOrderBtn", false);
     };
@@ -1069,7 +1069,6 @@
     function escAttr(s){return String(s||"").replace(/'/g,"&#39;").replace(/"/g,"&quot;").replace(/\n/g,"\\n");}
 
     document.addEventListener("DOMContentLoaded",()=>{
-      emailjs.init("b2edP5F5TK6fOfui3");
       loadSiteSettings();
       showView("public");
       document.addEventListener("keydown",e=>{

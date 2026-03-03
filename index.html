@@ -12,7 +12,8 @@
     import { initializeApp }
       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import {
-      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, updateProfile
+      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, updateProfile,
+      createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail
     } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import {
       getFirestore, collection, addDoc, getDocs, getDoc,
@@ -49,7 +50,84 @@
     /* ══════════════════════════════════════════════════════════
        AUTH
     ═══════════════════════════════════════════════════════════ */
-    window.loginWithGoogle = async () => {
+    /* ── EMAIL/PASSWORD AUTH ── */
+    window.showAuthModal = (tab = "login") => {
+      document.getElementById("authModal").classList.remove("hidden");
+      document.getElementById("authModal").classList.add("flex");
+      document.body.style.overflow = "hidden";
+      switchAuthTab(tab);
+    };
+    window.closeAuthModal = () => {
+      document.getElementById("authModal").classList.add("hidden");
+      document.getElementById("authModal").classList.remove("flex");
+      document.body.style.overflow = "";
+      document.getElementById("authError").textContent = "";
+    };
+    window.switchAuthTab = (tab) => {
+      document.getElementById("tabLogin").classList.toggle("tab-active", tab === "login");
+      document.getElementById("tabSignup").classList.toggle("tab-active", tab === "signup");
+      document.getElementById("loginForm").classList.toggle("hidden", tab !== "login");
+      document.getElementById("signupForm").classList.toggle("hidden", tab !== "signup");
+      document.getElementById("authError").textContent = "";
+    };
+
+    window.signUpWithEmail = async () => {
+      const name  = document.getElementById("suName").value.trim();
+      const email = document.getElementById("suEmail").value.trim();
+      const pass  = document.getElementById("suPass").value;
+      const pass2 = document.getElementById("suPass2").value;
+      const errEl = document.getElementById("authError");
+      if (!name || !email || !pass) { errEl.textContent = "All fields are required."; return; }
+      if (pass !== pass2) { errEl.textContent = "Passwords don't match."; return; }
+      if (pass.length < 6) { errEl.textContent = "Password must be at least 6 characters."; return; }
+      setBtnLoading("signUpBtn", true);
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, pass);
+        await updateProfile(cred.user, { displayName: name });
+        await ensureUserDoc({ ...cred.user, displayName: name });
+        closeAuthModal();
+        showToast("Welcome to LOKAYA GFX! 🔥", "success");
+      } catch(e) {
+        const msgs = {
+          "auth/email-already-in-use": "Email already registered. Please login.",
+          "auth/invalid-email": "Invalid email address.",
+          "auth/weak-password": "Password is too weak."
+        };
+        errEl.textContent = msgs[e.code] || e.message;
+      }
+      setBtnLoading("signUpBtn", false);
+    };
+
+    window.signInWithEmail = async () => {
+      const email = document.getElementById("liEmail").value.trim();
+      const pass  = document.getElementById("liPass").value;
+      const errEl = document.getElementById("authError");
+      if (!email || !pass) { errEl.textContent = "Email and password required."; return; }
+      setBtnLoading("signInBtn", true);
+      try {
+        await signInWithEmailAndPassword(auth, email, pass);
+        closeAuthModal();
+        showToast("Welcome back! 🔥", "success");
+      } catch(e) {
+        const msgs = {
+          "auth/user-not-found": "No account found. Please sign up.",
+          "auth/wrong-password": "Wrong password.",
+          "auth/invalid-credential": "Invalid email or password.",
+          "auth/too-many-requests": "Too many attempts. Try again later."
+        };
+        errEl.textContent = msgs[e.code] || e.message;
+      }
+      setBtnLoading("signInBtn", false);
+    };
+
+    window.resetPassword = async () => {
+      const email = document.getElementById("liEmail").value.trim();
+      if (!email) { document.getElementById("authError").textContent = "Enter your email first."; return; }
+      try {
+        await sendPasswordResetEmail(auth, email);
+        showToast("Reset email sent! Check your inbox.", "success");
+      } catch(e) { document.getElementById("authError").textContent = e.message; }
+    };
       try {
         await signInWithPopup(auth, provider);
       } catch (e) {
@@ -127,17 +205,17 @@
       el.classList.add("active-view");
       window.scrollTo({ top: 0, behavior: "smooth" });
 
-      if (view === "public") { loadPublicPortfolio(); loadPublicStatus(); loadPublicVault(); loadPublicPricing(); }
+      if (view === "public") { loadPublicPortfolio(); loadPublicStatus(); loadPublicVault(); loadPublicPricing(); loadPublicReviews(); }
       if (view === "dashboard") {
         if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
           showView("public"); showToast("Admin access only.", "error"); return;
         }
-        loadDashboardPortfolio(); loadDashboardStatus(); loadAdminUsers(); loadAdminVault(); loadAdminPricing();
+        loadDashboardPortfolio(); loadDashboardStatus(); loadAdminUsers(); loadAdminVault(); loadAdminPricing(); loadAdminOrders(); loadAdminReviews();
         showDash("dash");
       }
       if (view === "profile") {
-        if (!currentUser) { showToast("Please sign in first.", "error"); showView("public"); return; }
-        loadProfileView();
+        if (!currentUser) { showToast("Please sign in first.", "error"); showAuthModal("login"); return; }
+        loadProfileView(); loadMyOrders();
       }
     };
 
@@ -366,31 +444,27 @@
       const desc    = document.getElementById("orderDesc").value.trim();
       const budget  = document.getElementById("orderBudget").value.trim();
 
-      if (!name || !email || !desc) {
-        showToast("Name, email and description are required.", "error"); return;
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        showToast("Please enter a valid email.", "error"); return;
-      }
+      if (!name || !email || !desc) { showToast("Name, email and description are required.", "error"); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast("Please enter a valid email.", "error"); return; }
 
       setBtnLoading("submitOrderBtn", true);
-      showToast("Sending order...", "info");
-
       try {
-        // Save order to Firestore
-        try {
-          await addDoc(collection(db, "orders"), {
-            name, email, phone, design, desc, budget,
-            status: "pending",
-            createdAt: serverTimestamp()
-          });
-        } catch(fsErr) { console.warn("Firestore:", fsErr); }
+        // Save order to Firestore with userId for profile tracking
+        const orderRef = await addDoc(collection(db, "orders"), {
+          name, email, phone, design, desc, budget,
+          status: "pending",
+          statusLabel: "Pending Review",
+          userId: currentUser?.uid || "",
+          userEmail: currentUser?.email || email,
+          createdAt: serverTimestamp()
+        });
 
-        // Build mailto link and open Gmail
+        // Open mailto
         const subject = encodeURIComponent(`🔥 New Order — ${design} — ${name}`);
         const body = encodeURIComponent(
 `New Order Received!
 ================================
+Order ID : ${orderRef.id}
 Customer : ${name}
 Email    : ${email}
 Phone    : ${phone || "Not provided"}
@@ -400,42 +474,63 @@ Budget   : ${budget || "Not specified"}
 Description:
 ${desc}
 ================================
-Reply to customer: ${email}`
+Reply to: ${email}`
         );
+        window.location.href = `mailto:${ORDER_EMAIL}?subject=${subject}&body=${body}`;
 
-        window.location.href = `mailto:lokayafx@gmail.com?subject=${subject}&body=${body}`;
-
-        // Show success
         document.getElementById("orderFormInner").classList.add("hidden");
         document.getElementById("orderSuccess").classList.remove("hidden");
-        showToast("Order sent! ✓", "success");
-      } catch(e) {
-        showToast("Error: " + e.message, "error");
-      }
+        showToast("Order placed! ✓", "success");
+      } catch(e) { showToast("Error: " + e.message, "error"); }
       setBtnLoading("submitOrderBtn", false);
     };
 
     /* ══════════════════════════════════════════════════════════
-       LOAD PUBLIC PORTFOLIO (with Order Now button)
+       LOAD PUBLIC PORTFOLIO (with category filter + Order Now)
     ═══════════════════════════════════════════════════════════ */
+    let allPortfolioItems = [];
+    let activeCategory = "all";
     async function fetchPortfolio() {
       const q = query(collection(db,"portfolio"), orderBy("createdAt","desc"));
       const snap = await getDocs(q);
-      portfolioItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      return portfolioItems;
+      allPortfolioItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      portfolioItems = allPortfolioItems;
+      return allPortfolioItems;
     }
+
+    window.filterCategory = (cat) => {
+      activeCategory = cat;
+      document.querySelectorAll(".cat-btn").forEach(b => b.classList.toggle("tab-active", b.dataset.cat === cat));
+      const filtered = cat === "all" ? allPortfolioItems : allPortfolioItems.filter(i => i.category === cat);
+      renderPortfolioGrid(filtered);
+    };
 
     async function loadPublicPortfolio() {
       const grid = document.getElementById("portfolioGrid");
       if (!grid) return;
       grid.innerHTML = `<div class="col-span-full flex justify-center py-16"><div class="spinner"></div></div>`;
       const items = await fetchPortfolio();
+
+      // Build category tabs
+      const cats = [...new Set(items.map(i => i.category).filter(Boolean))];
+      const tabCont = document.getElementById("categoryTabs");
+      if (tabCont) {
+        tabCont.innerHTML = `
+          <button class="cat-btn tab-active btn-liquid px-4 py-2 rounded-xl font-poppins text-xs uppercase tracking-wider text-purple-300" data-cat="all" onclick="filterCategory('all')">All</button>
+          ${cats.map(c => `<button class="cat-btn btn-liquid px-4 py-2 rounded-xl font-poppins text-xs uppercase tracking-wider text-gray-400" data-cat="${escHtml(c)}" onclick="filterCategory('${escAttr(c)}')">${escHtml(c)}</button>`).join("")}
+        `;
+      }
+      renderPortfolioGrid(items);
+    }
+    window.loadPublicPortfolio = loadPublicPortfolio;
+
+    function renderPortfolioGrid(items) {
+      const grid = document.getElementById("portfolioGrid");
       if (!items.length) {
-        grid.innerHTML = `<div class="col-span-full text-center py-16 text-gray-600">No portfolio items yet.</div>`; return;
+        grid.innerHTML = `<div class="col-span-full text-center py-16 text-gray-600">No items in this category yet.</div>`; return;
       }
       grid.innerHTML = items.map(item => `
         <div class="glass-card rounded-2xl overflow-hidden flex flex-col">
-          <!-- Image — click to lightbox -->
           <div class="relative overflow-hidden aspect-video bg-black/40 cursor-pointer group"
                onclick="openLightbox('${escAttr(item.imageUrl)}','${escAttr(item.title)}','${escAttr(item.desc||"")}')">
             <img src="${escHtml(item.imageUrl)}" alt="${escHtml(item.title)}"
@@ -448,11 +543,9 @@ Reply to customer: ${email}`
             </div>
             ${item.category?`<span class="absolute top-3 left-3 badge">${escHtml(item.category)}</span>`:""}
           </div>
-          <!-- Info + Order Button -->
           <div class="p-5 flex flex-col flex-1">
             <h3 class="font-bebas text-xl text-white tracking-wider mb-1">${escHtml(item.title)}</h3>
             <p class="font-poppins text-gray-500 text-xs leading-relaxed line-clamp-2 flex-1 mb-4">${escHtml(item.desc||"")}</p>
-            <!-- ORDER NOW BUTTON -->
             <button onclick="openOrderChoice('${escAttr(item.title)}')"
               class="btn-purple w-full py-2.5 rounded-xl font-poppins font-semibold text-sm text-white flex items-center justify-center gap-2 mt-auto">
               <i class="fa-solid fa-bag-shopping text-sm"></i> Order Now
@@ -460,10 +553,14 @@ Reply to customer: ${email}`
           </div>
         </div>`).join("");
     }
-    window.loadPublicPortfolio = loadPublicPortfolio;
 
     /* Order Choice popup — WhatsApp or Web */
     window.openOrderChoice = (title) => {
+      if (!currentUser) {
+        showToast("Please sign in to place an order! 🔒", "error");
+        showAuthModal("login");
+        return;
+      }
       document.getElementById("choiceTitle").textContent = title;
       document.getElementById("choiceDesign").value = title;
       document.getElementById("orderChoiceModal").classList.remove("hidden");
@@ -605,6 +702,215 @@ Reply to customer: ${email}`
         await deleteDoc(doc(db,"portfolio",id));
         showToast("Deleted.", "success"); loadDashboardPortfolio(); loadPublicPortfolio();
       } catch (e) { showToast("Error: " + e.message, "error"); }
+    };
+
+    /* ══════════════════════════════════════════════════════════
+       MY ORDERS (Profile)
+    ═══════════════════════════════════════════════════════════ */
+    async function loadMyOrders() {
+      const cont = document.getElementById("myOrdersCont");
+      if (!cont || !currentUser) return;
+      cont.innerHTML = `<div class="flex justify-center py-10"><div class="spinner"></div></div>`;
+      try {
+        const q = query(collection(db,"orders"), where("userId","==",currentUser.uid), orderBy("createdAt","desc"));
+        const snap = await getDocs(q);
+        const orders = snap.docs.map(d => ({id:d.id,...d.data()}));
+        if (!orders.length) {
+          cont.innerHTML = `<div class="text-center py-10">
+            <i class="fa-solid fa-bag-shopping text-purple-900 text-4xl mb-3"></i>
+            <p class="font-poppins text-gray-600 text-sm">No orders yet. Browse the Armory!</p>
+          </div>`; return;
+        }
+        const S = {
+          pending:    {color:"#f59e0b",icon:"fa-clock",         label:"Pending Review"},
+          accepted:   {color:"#22c55e",icon:"fa-circle-check",  label:"Accepted ✓"},
+          inprogress: {color:"#9333ea",icon:"fa-spinner",       label:"In Progress"},
+          completed:  {color:"#22c55e",icon:"fa-trophy",        label:"Completed ✓"},
+          rejected:   {color:"#ef4444",icon:"fa-circle-xmark",  label:"Declined"},
+        };
+        cont.innerHTML = orders.map(o => {
+          const st = S[o.status]||S.pending;
+          const date = o.createdAt?.toDate?.()?.toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"})||"—";
+          return `<div class="glass-card rounded-xl p-5">
+            <div class="flex items-start justify-between gap-3 mb-2">
+              <div class="flex-1 min-w-0">
+                <p class="font-bebas text-lg text-white tracking-wider truncate">${escHtml(o.design||"Design Order")}</p>
+                <p class="font-mono text-xs text-gray-600">${date}</p>
+              </div>
+              <span class="flex items-center gap-1.5 flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-poppins font-semibold"
+                    style="color:${st.color};background:${st.color}18;border:1px solid ${st.color}40">
+                <i class="fa-solid ${st.icon} text-xs"></i> ${st.label}
+              </span>
+            </div>
+            <p class="font-poppins text-gray-500 text-xs line-clamp-2">${escHtml(o.desc||"")}</p>
+            ${o.adminNote?`<div class="mt-3 p-3 rounded-lg" style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2)">
+              <p class="font-mono text-xs text-green-400"><i class="fa-solid fa-comment-dots mr-1"></i>${escHtml(o.adminNote)}</p>
+            </div>`:""}
+          </div>`;
+        }).join("");
+      } catch(e) { cont.innerHTML = `<p class="text-center text-red-400 text-sm py-8">${e.message}</p>`; }
+    }
+    window.loadMyOrders = loadMyOrders;
+
+    /* ══════════════════════════════════════════════════════════
+       ADMIN — ORDERS
+    ═══════════════════════════════════════════════════════════ */
+    async function loadAdminOrders() {
+      const list = document.getElementById("adminOrderList");
+      if (!list) return;
+      list.innerHTML = `<div class="flex justify-center py-10"><div class="spinner"></div></div>`;
+      try {
+        const q = query(collection(db,"orders"), orderBy("createdAt","desc"));
+        const snap = await getDocs(q);
+        const orders = snap.docs.map(d => ({id:d.id,...d.data()}));
+        const el = document.getElementById("statOrders"); if(el) el.textContent = orders.length;
+        if (!orders.length) { list.innerHTML = `<p class="text-center text-gray-600 py-10 text-sm">No orders yet.</p>`; return; }
+        const SC = {pending:"#f59e0b",accepted:"#22c55e",inprogress:"#9333ea",completed:"#22c55e",rejected:"#ef4444"};
+        list.innerHTML = orders.map(o => {
+          const date = o.createdAt?.toDate?.()?.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})||"—";
+          const col = SC[o.status]||"#f59e0b";
+          return `<div class="glass-card rounded-xl p-4">
+            <div class="flex items-start justify-between gap-3 mb-2">
+              <div class="flex-1 min-w-0">
+                <p class="font-bebas text-lg text-white tracking-wider">${escHtml(o.design||"Order")}</p>
+                <p class="font-mono text-xs text-purple-400">${escHtml(o.name||"")} · ${escHtml(o.email||"")}</p>
+                <p class="font-mono text-xs text-gray-600">${date}</p>
+              </div>
+              <span class="flex-shrink-0 px-3 py-1 rounded-full text-xs font-poppins font-semibold"
+                    style="color:${col};background:${col}18;border:1px solid ${col}40">${o.status||"pending"}</span>
+            </div>
+            <p class="font-poppins text-gray-500 text-xs mb-3 line-clamp-2">${escHtml(o.desc||"")}</p>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="updateOrderStatus('${o.id}','accepted')" class="btn-liquid px-3 py-1.5 rounded-lg font-poppins text-xs text-green-400 flex items-center gap-1"><i class="fa-solid fa-check text-xs"></i> Accept</button>
+              <button onclick="updateOrderStatus('${o.id}','inprogress')" class="btn-liquid px-3 py-1.5 rounded-lg font-poppins text-xs text-purple-400 flex items-center gap-1"><i class="fa-solid fa-spinner text-xs"></i> In Progress</button>
+              <button onclick="updateOrderStatus('${o.id}','completed')" class="btn-liquid px-3 py-1.5 rounded-lg font-poppins text-xs text-blue-400 flex items-center gap-1"><i class="fa-solid fa-trophy text-xs"></i> Complete</button>
+              <button onclick="updateOrderStatus('${o.id}','rejected')" class="btn-liquid px-3 py-1.5 rounded-lg font-poppins text-xs text-red-400 flex items-center gap-1"><i class="fa-solid fa-xmark text-xs"></i> Decline</button>
+              <button onclick="openAdminNoteModal('${o.id}','${escAttr(o.adminNote||"")}')" class="btn-liquid px-3 py-1.5 rounded-lg font-poppins text-xs text-yellow-400 flex items-center gap-1"><i class="fa-solid fa-comment text-xs"></i> Note</button>
+            </div>
+          </div>`;
+        }).join("");
+      } catch(e) { list.innerHTML = `<p class="text-center text-red-400 py-10 text-sm">${e.message}</p>`; }
+    }
+    window.loadAdminOrders = loadAdminOrders;
+    window.updateOrderStatus = async (id, status) => {
+      try { await updateDoc(doc(db,"orders",id),{status}); showToast(`Order ${status}! ✓`,"success"); loadAdminOrders(); }
+      catch(e) { showToast("Error: "+e.message,"error"); }
+    };
+    window.openAdminNoteModal = (id, note) => {
+      document.getElementById("adminNoteOrderId").value = id;
+      document.getElementById("adminNoteText").value = note;
+      document.getElementById("adminNoteModal").classList.remove("hidden");
+      document.getElementById("adminNoteModal").classList.add("flex");
+    };
+    window.closeAdminNoteModal = () => {
+      document.getElementById("adminNoteModal").classList.add("hidden");
+      document.getElementById("adminNoteModal").classList.remove("flex");
+    };
+    window.saveAdminNote = async () => {
+      const id = document.getElementById("adminNoteOrderId").value;
+      const note = document.getElementById("adminNoteText").value.trim();
+      try { await updateDoc(doc(db,"orders",id),{adminNote:note}); showToast("Note saved! ✓","success"); closeAdminNoteModal(); loadAdminOrders(); }
+      catch(e) { showToast("Error: "+e.message,"error"); }
+    };
+
+    /* ══════════════════════════════════════════════════════════
+       REVIEWS
+    ═══════════════════════════════════════════════════════════ */
+    async function loadPublicReviews() {
+      const grid = document.getElementById("reviewsGrid");
+      if (!grid) return;
+      grid.innerHTML = `<div class="col-span-full flex justify-center py-10"><div class="spinner"></div></div>`;
+      try {
+        const q = query(collection(db,"reviews"), orderBy("createdAt","desc"));
+        const snap = await getDocs(q);
+        const reviews = snap.docs.map(d => ({id:d.id,...d.data()})).filter(r => r.approved);
+        if (!reviews.length) { grid.innerHTML = `<div class="col-span-full text-center py-10 text-gray-600 text-sm">No reviews yet. Be the first!</div>`; return; }
+        grid.innerHTML = reviews.map(r => {
+          const stars = "★".repeat(r.rating||5)+"☆".repeat(5-(r.rating||5));
+          return `<div class="glass-card rounded-2xl p-6">
+            <div class="flex items-center gap-3 mb-4">
+              <img src="${escHtml(r.photoURL||"")}" alt="" class="w-10 h-10 rounded-xl object-cover bg-purple-900/40"
+                onerror="this.src='https://placehold.co/40x40/1a0033/bf00ff?text=U'"/>
+              <div>
+                <p class="font-bebas text-white text-lg tracking-wider leading-none">${escHtml(r.displayName||"Customer")}</p>
+                <p class="text-yellow-400 text-sm leading-none mt-1">${stars}</p>
+              </div>
+            </div>
+            <p class="font-poppins text-gray-400 text-sm leading-relaxed">"${escHtml(r.text||"")}"</p>
+            ${r.designType?`<span class="badge mt-3 inline-block">${escHtml(r.designType)}</span>`:""}
+          </div>`;
+        }).join("");
+      } catch(e) { grid.innerHTML = ""; }
+    }
+    window.loadPublicReviews = loadPublicReviews;
+
+    window.openReviewModal = () => {
+      if (!currentUser) { showToast("Please sign in to leave a review!","error"); showAuthModal("login"); return; }
+      document.getElementById("reviewModal").classList.remove("hidden");
+      document.getElementById("reviewModal").classList.add("flex");
+      document.body.style.overflow = "hidden";
+    };
+    window.closeReviewModal = () => {
+      document.getElementById("reviewModal").classList.add("hidden");
+      document.getElementById("reviewModal").classList.remove("flex");
+      document.body.style.overflow = "";
+    };
+    window.submitReview = async () => {
+      const text   = document.getElementById("reviewText").value.trim();
+      const rating = parseInt(document.getElementById("reviewRating").value);
+      const dtype  = document.getElementById("reviewDesignType").value.trim();
+      if (!text) { showToast("Please write your review.","error"); return; }
+      setBtnLoading("submitReviewBtn",true);
+      try {
+        const snap = await getDoc(doc(db,"users",currentUser.uid));
+        const ud = snap.exists() ? snap.data() : {};
+        await addDoc(collection(db,"reviews"),{
+          text,rating,designType:dtype,
+          displayName: ud.customDisplayName||ud.displayName||currentUser.displayName||"Customer",
+          photoURL: ud.customPhotoURL||ud.photoURL||currentUser.photoURL||"",
+          userId: currentUser.uid, approved:false, createdAt:serverTimestamp()
+        });
+        closeReviewModal();
+        document.getElementById("reviewText").value="";
+        showToast("Review submitted! Pending approval. ✓","success");
+      } catch(e) { showToast("Error: "+e.message,"error"); }
+      setBtnLoading("submitReviewBtn",false);
+    };
+
+    async function loadAdminReviews() {
+      const list = document.getElementById("adminReviewList");
+      if (!list) return;
+      list.innerHTML = `<div class="flex justify-center py-10"><div class="spinner"></div></div>`;
+      try {
+        const q = query(collection(db,"reviews"), orderBy("createdAt","desc"));
+        const snap = await getDocs(q);
+        const reviews = snap.docs.map(d => ({id:d.id,...d.data()}));
+        if (!reviews.length) { list.innerHTML = `<p class="text-center text-gray-600 py-10 text-sm">No reviews yet.</p>`; return; }
+        list.innerHTML = reviews.map(r => `
+          <div class="glass-card rounded-xl p-4 flex items-start gap-4">
+            <div class="flex-1 min-w-0">
+              <p class="font-bebas text-white text-lg tracking-wider">${escHtml(r.displayName||"")}</p>
+              <p class="text-yellow-400 text-xs">${"★".repeat(r.rating||5)}</p>
+              <p class="font-poppins text-gray-500 text-xs mt-1 line-clamp-2">${escHtml(r.text||"")}</p>
+            </div>
+            <div class="flex flex-col gap-2 flex-shrink-0">
+              ${r.approved
+                ? `<span class="badge" style="color:#22c55e;border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.1)">Approved</span>`
+                : `<button onclick="approveReview('${r.id}')" class="btn-liquid px-3 py-1.5 rounded-lg font-poppins text-xs text-green-400"><i class="fa-solid fa-check mr-1"></i>Approve</button>`}
+              <button onclick="deleteReview('${r.id}')" class="btn-icon text-red-400"><i class="fa-solid fa-trash text-xs"></i></button>
+            </div>
+          </div>`).join("");
+      } catch(e) { list.innerHTML = `<p class="text-red-400 text-sm text-center py-8">${e.message}</p>`; }
+    }
+    window.loadAdminReviews = loadAdminReviews;
+    window.approveReview = async (id) => {
+      try { await updateDoc(doc(db,"reviews",id),{approved:true}); showToast("Approved! ✓","success"); loadAdminReviews(); loadPublicReviews(); }
+      catch(e) { showToast("Error: "+e.message,"error"); }
+    };
+    window.deleteReview = async (id) => {
+      if (!confirm("Delete this review?")) return;
+      try { await deleteDoc(doc(db,"reviews",id)); showToast("Deleted.","success"); loadAdminReviews(); loadPublicReviews(); }
+      catch(e) { showToast("Error: "+e.message,"error"); }
     };
 
     /* ══════════════════════════════════════════════════════════
@@ -1072,7 +1378,7 @@ Reply to customer: ${email}`
       loadSiteSettings();
       showView("public");
       document.addEventListener("keydown",e=>{
-        if(e.key==="Escape"){closeLightbox();closeUpdateWorksModal();closeOrderModal();closeOrderChoice();}
+        if(e.key==="Escape"){closeLightbox();closeUpdateWorksModal();closeOrderModal();closeOrderChoice();closeAuthModal();closeReviewModal();closeAdminNoteModal();}
       });
     });
   </script>
@@ -1141,7 +1447,7 @@ Reply to customer: ${email}`
     #mobileMenu.open{display:flex;}
     .section-tag{font-family:"DM Mono",monospace;font-size:.68rem;letter-spacing:.3em;text-transform:uppercase;color:var(--glow);opacity:.7;}
     .line-clamp-2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-    #lightbox,#updateWorksModal,#orderModal,#orderChoiceModal{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px;}
+    #lightbox,#updateWorksModal,#orderModal,#orderChoiceModal,#authModal,#reviewModal,#adminNoteModal{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px;}
     /* Beautiful close button */
     .btn-close{width:38px;height:38px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);cursor:pointer;transition:all .2s ease;color:#9ca3af;}
     .btn-close:hover{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#f87171;transform:scale(1.05);}
@@ -1322,6 +1628,102 @@ Reply to customer: ${email}`
     </div>
   </div>
 </div>
+<!-- ═══════════ AUTH MODAL ═══════════ -->
+<div id="authModal" class="hidden" onclick="if(event.target===this)closeAuthModal()">
+  <div class="glass rounded-3xl w-full max-w-sm">
+    <div class="p-7">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="font-bebas text-3xl text-white tracking-wider">WELCOME</h2>
+        <button onclick="closeAuthModal()" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="flex gap-2 mb-5">
+        <button id="tabLogin" onclick="switchAuthTab('login')" class="tab-active btn-liquid flex-1 py-2.5 rounded-xl font-poppins font-semibold text-xs uppercase tracking-wider text-purple-300">Sign In</button>
+        <button id="tabSignup" onclick="switchAuthTab('signup')" class="btn-liquid flex-1 py-2.5 rounded-xl font-poppins font-semibold text-xs uppercase tracking-wider text-gray-400">Sign Up</button>
+      </div>
+      <p id="authError" class="font-poppins text-xs text-red-400 mb-3 min-h-[16px]"></p>
+      <!-- LOGIN -->
+      <div id="loginForm" class="flex flex-col gap-3">
+        <div><label class="gfx-label">Email</label><input id="liEmail" type="email" class="gfx-input" placeholder="you@gmail.com"/></div>
+        <div><label class="gfx-label">Password</label><input id="liPass" type="password" class="gfx-input" placeholder="••••••••"/></div>
+        <button id="signInBtn" onclick="signInWithEmail()" class="btn-purple w-full py-3 rounded-xl font-poppins font-bold text-sm text-white flex items-center justify-center gap-2 mt-1">
+          <i class="fa-solid fa-right-to-bracket"></i> Sign In
+        </button>
+        <button onclick="resetPassword()" class="font-poppins text-xs text-gray-600 hover:text-purple-400 transition-colors text-center">Forgot password?</button>
+        <div class="flex items-center gap-3"><div class="flex-1 h-px bg-purple-900/40"></div><span class="font-mono text-xs text-gray-700">or</span><div class="flex-1 h-px bg-purple-900/40"></div></div>
+        <button onclick="loginWithGoogle()" class="btn-liquid w-full py-3 rounded-xl font-poppins font-semibold text-sm text-white flex items-center justify-center gap-2">
+          <i class="fa-brands fa-google"></i> Continue with Google
+        </button>
+      </div>
+      <!-- SIGNUP -->
+      <div id="signupForm" class="hidden flex flex-col gap-3">
+        <div><label class="gfx-label">Display Name</label><input id="suName" type="text" class="gfx-input" placeholder="Your gaming name"/></div>
+        <div><label class="gfx-label">Email</label><input id="suEmail" type="email" class="gfx-input" placeholder="you@gmail.com"/></div>
+        <div><label class="gfx-label">Password</label><input id="suPass" type="password" class="gfx-input" placeholder="Min 6 characters"/></div>
+        <div><label class="gfx-label">Confirm Password</label><input id="suPass2" type="password" class="gfx-input" placeholder="Repeat password"/></div>
+        <button id="signUpBtn" onclick="signUpWithEmail()" class="btn-purple w-full py-3 rounded-xl font-poppins font-bold text-sm text-white flex items-center justify-center gap-2 mt-1">
+          <i class="fa-solid fa-user-plus"></i> Create Account
+        </button>
+        <div class="flex items-center gap-3"><div class="flex-1 h-px bg-purple-900/40"></div><span class="font-mono text-xs text-gray-700">or</span><div class="flex-1 h-px bg-purple-900/40"></div></div>
+        <button onclick="loginWithGoogle()" class="btn-liquid w-full py-3 rounded-xl font-poppins font-semibold text-sm text-white flex items-center justify-center gap-2">
+          <i class="fa-brands fa-google"></i> Continue with Google
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ REVIEW MODAL ═══════════ -->
+<div id="reviewModal" class="hidden" onclick="if(event.target===this)closeReviewModal()">
+  <div class="glass rounded-3xl w-full max-w-md">
+    <div class="p-7">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="font-bebas text-2xl text-white tracking-wider flex items-center gap-2">
+          <i class="fa-solid fa-star text-yellow-400"></i> Leave a Review
+        </h2>
+        <button onclick="closeReviewModal()" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="flex flex-col gap-4">
+        <div><label class="gfx-label">Rating</label>
+          <select id="reviewRating" class="gfx-input">
+            <option value="5">★★★★★ Excellent</option>
+            <option value="4">★★★★☆ Great</option>
+            <option value="3">★★★☆☆ Good</option>
+            <option value="2">★★☆☆☆ Fair</option>
+            <option value="1">★☆☆☆☆ Poor</option>
+          </select>
+        </div>
+        <div><label class="gfx-label">Design Type</label><input id="reviewDesignType" type="text" class="gfx-input" placeholder="e.g. Logo, Banner..."/></div>
+        <div><label class="gfx-label">Your Review *</label><textarea id="reviewText" class="gfx-input" rows="4" placeholder="Share your experience..."></textarea></div>
+        <p class="font-mono text-xs text-gray-600">Reviews appear after admin approval.</p>
+        <div class="flex gap-3">
+          <button onclick="closeReviewModal()" class="btn-back flex-shrink-0"><i class="fa-solid fa-arrow-left"></i> Back</button>
+          <button id="submitReviewBtn" onclick="submitReview()" class="btn-purple flex-1 py-3 rounded-xl font-poppins font-bold text-sm text-white flex items-center justify-center gap-2">
+            <i class="fa-solid fa-paper-plane"></i> Submit
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ ADMIN NOTE MODAL ═══════════ -->
+<div id="adminNoteModal" class="hidden" onclick="if(event.target===this)closeAdminNoteModal()">
+  <div class="glass rounded-2xl p-7 max-w-sm w-full">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="font-bebas text-2xl text-white tracking-wider">Note to Customer</h3>
+      <button onclick="closeAdminNoteModal()" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <input type="hidden" id="adminNoteOrderId"/>
+    <div class="mb-5">
+      <label class="gfx-label">Note (visible on customer profile)</label>
+      <textarea id="adminNoteText" class="gfx-input" rows="3" placeholder="e.g. Order accepted! Delivery in 2 days."></textarea>
+    </div>
+    <button onclick="saveAdminNote()" class="btn-purple w-full py-3 rounded-xl font-poppins font-bold text-sm text-white flex items-center justify-center gap-2">
+      <i class="fa-solid fa-floppy-disk"></i> Save Note
+    </button>
+  </div>
+</div>
+
 <nav class="navbar-glass fixed top-0 left-0 right-0 z-50">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
     <button onclick="showView('public')" class="flex items-center gap-2 focus:outline-none">
@@ -1343,9 +1745,9 @@ Reply to customer: ${email}`
         class="hidden btn-liquid px-4 py-2 rounded-lg font-poppins font-semibold text-xs tracking-wider text-purple-300 uppercase flex items-center gap-2">
         <i class="fa-solid fa-gauge-high text-xs"></i> Dashboard
       </button>
-      <button id="navLoginBtn" onclick="loginWithGoogle()"
+      <button id="navLoginBtn" onclick="showAuthModal('login')"
         class="btn-liquid px-4 py-2 rounded-lg font-poppins font-semibold text-xs tracking-wider text-purple-300 uppercase flex items-center gap-2">
-        <i class="fa-brands fa-google text-xs"></i> Sign In
+        <i class="fa-solid fa-right-to-bracket text-xs"></i> Sign In
       </button>
       <button id="navLogoutBtn" onclick="logoutUser()"
         class="hidden btn-icon text-gray-500 hover:text-red-400" title="Sign Out">
@@ -1368,9 +1770,9 @@ Reply to customer: ${email}`
       class="hidden btn-liquid px-4 py-2 rounded-lg font-poppins text-xs text-purple-300 uppercase text-left flex items-center gap-2">
       <i class="fa-solid fa-gauge-high"></i> Dashboard
     </button>
-    <button id="mNavLoginBtn" onclick="loginWithGoogle()"
+    <button id="mNavLoginBtn" onclick="showAuthModal('login')"
       class="btn-liquid px-4 py-2 rounded-lg font-poppins text-xs text-purple-300 uppercase text-left flex items-center gap-2">
-      <i class="fa-brands fa-google"></i> Sign In with Google
+      <i class="fa-solid fa-right-to-bracket"></i> Sign In
     </button>
     <button id="mNavLogoutBtn" onclick="logoutUser()"
       class="hidden btn-liquid px-4 py-2 rounded-lg font-poppins text-xs text-red-400 uppercase text-left flex items-center gap-2">
@@ -1434,17 +1836,18 @@ Reply to customer: ${email}`
     </div>
   </section>
 
-  <!-- ARMORY -->
-  <section id="armory" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 relative z-10" style="scroll-margin-top:80px">
-    <div class="text-center mb-14">
-      <p class="section-tag mb-3">— Portfolio —</p>
-      <h2 class="font-bebas text-5xl sm:text-6xl text-white">THE <span class="shimmer-text">ARMORY</span></h2>
-      <p class="font-poppins text-gray-500 text-sm mt-3">Weapons of visual warfare</p>
-    </div>
-    <div id="portfolioGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div class="col-span-full flex justify-center py-16"><div class="spinner"></div></div>
-    </div>
-  </section>
+    <section id="armory" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 relative z-10" style="scroll-margin-top:80px">
+      <div class="text-center mb-10">
+        <p class="section-tag mb-3">— Portfolio —</p>
+        <h2 class="font-bebas text-5xl sm:text-6xl text-white">THE <span class="shimmer-text">ARMORY</span></h2>
+        <p class="font-poppins text-gray-500 text-sm mt-3">Weapons of visual warfare</p>
+      </div>
+      <!-- Category Filter Tabs -->
+      <div id="categoryTabs" class="flex flex-wrap gap-2 justify-center mb-8"></div>
+      <div id="portfolioGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="col-span-full flex justify-center py-16"><div class="spinner"></div></div>
+      </div>
+    </section>
 
   <!-- LIVE STATUS -->
   <section id="status-section" class="py-24 relative" style="scroll-margin-top:80px">
@@ -1497,7 +1900,25 @@ Reply to customer: ${email}`
     </div>
   </section>
 
-  <!-- SIGN IN CTA (hidden when logged in) -->
+  <!-- REVIEWS -->
+  <section id="reviews-section" class="py-24 relative z-10" style="scroll-margin-top:80px">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <div class="text-center mb-14">
+        <p class="section-tag mb-3">— Testimonials —</p>
+        <h2 class="font-bebas text-5xl sm:text-6xl text-white">WHAT CLIENTS <span class="shimmer-text">SAY</span></h2>
+        <p class="font-poppins text-gray-500 text-sm mt-3 mb-6">Real feedback from the squad</p>
+        <button onclick="openReviewModal()"
+          class="btn-liquid px-6 py-3 rounded-xl font-poppins font-semibold text-sm text-purple-300 uppercase tracking-wider inline-flex items-center gap-2">
+          <i class="fa-solid fa-star"></i> Leave a Review
+        </button>
+      </div>
+      <div id="reviewsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="col-span-full flex justify-center py-10"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SIGN IN CTA -->
   <section id="loginCTA" class="py-20 relative z-10">
     <div class="max-w-3xl mx-auto px-4 sm:px-6">
       <div class="glass-card rounded-3xl p-8 sm:p-12 text-center relative overflow-hidden">
@@ -1634,7 +2055,20 @@ Reply to customer: ${email}`
       </div>
 
       <!-- My Orders -->
-      <div class="glass-card rounded-2xl p-6 sm:p-8">
+      <div class="glass-card rounded-2xl p-6 sm:p-8 mb-6">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="font-bebas text-2xl sm:text-3xl text-white tracking-wider">MY ORDERS</h2>
+            <p class="font-mono text-xs text-purple-400 mt-1">Your order history & status</p>
+          </div>
+          <button onclick="loadMyOrders()" class="btn-icon text-gray-500 hover:text-purple-300">
+            <i class="fa-solid fa-rotate-right text-xs"></i>
+          </button>
+        </div>
+        <div id="myOrdersCont" class="flex flex-col gap-4">
+          <div class="flex justify-center py-10"><div class="spinner"></div></div>
+        </div>
+      </div>
         <div class="flex items-center justify-between mb-6">
           <div>
             <h2 class="font-bebas text-2xl sm:text-3xl text-white tracking-wider">MY ORDERS</h2>
@@ -1683,7 +2117,7 @@ Reply to customer: ${email}`
       <!-- Stats -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <div class="glass-card rounded-xl p-5 text-center"><i class="fa-solid fa-images text-purple-400 mb-2 text-lg"></i><p class="font-bebas text-3xl text-white" id="statPortfolio">—</p><p class="font-mono text-xs text-gray-600 uppercase tracking-wider mt-1">Portfolio</p></div>
-        <div class="glass-card rounded-xl p-5 text-center"><i class="fa-solid fa-chart-simple text-purple-400 mb-2 text-lg"></i><p class="font-bebas text-3xl text-white" id="statStatus">—</p><p class="font-mono text-xs text-gray-600 uppercase tracking-wider mt-1">Projects</p></div>
+        <div class="glass-card rounded-xl p-5 text-center"><i class="fa-solid fa-bag-shopping text-purple-400 mb-2 text-lg"></i><p class="font-bebas text-3xl text-white" id="statOrders">—</p><p class="font-mono text-xs text-gray-600 uppercase tracking-wider mt-1">Orders</p></div>
         <div class="glass-card rounded-xl p-5 text-center"><i class="fa-solid fa-users text-purple-400 mb-2 text-lg"></i><p class="font-bebas text-3xl text-white" id="statUsers">—</p><p class="font-mono text-xs text-gray-600 uppercase tracking-wider mt-1">Users</p></div>
         <div class="glass-card rounded-xl p-5 text-center"><i class="fa-solid fa-fire text-orange-400 mb-2 text-lg"></i><p class="font-bebas text-3xl text-white">LIVE</p><p class="font-mono text-xs text-gray-600 uppercase tracking-wider mt-1">System</p></div>
       </div>
@@ -1692,8 +2126,10 @@ Reply to customer: ${email}`
       <div class="flex flex-wrap gap-3 mb-8">
         <button id="tab-dash" onclick="showDash('dash')" class="dash-tab tab-active btn-liquid px-4 py-2.5 rounded-xl font-poppins font-semibold text-xs uppercase tracking-wider text-purple-300 flex items-center gap-2"><i class="fa-solid fa-images"></i> Portfolio</button>
         <button id="tab-status" onclick="showDash('status')" class="dash-tab btn-liquid px-4 py-2.5 rounded-xl font-poppins font-semibold text-xs uppercase tracking-wider text-gray-400 flex items-center gap-2"><i class="fa-solid fa-chart-simple"></i> Status</button>
+        <button id="tab-orders" onclick="showDash('orders');loadAdminOrders()" class="dash-tab btn-liquid px-4 py-2.5 rounded-xl font-poppins font-semibold text-xs uppercase tracking-wider text-gray-400 flex items-center gap-2"><i class="fa-solid fa-bag-shopping"></i> Orders</button>
         <button id="tab-vault" onclick="showDash('vault')" class="dash-tab btn-liquid px-4 py-2.5 rounded-xl font-poppins font-semibold text-xs uppercase tracking-wider text-gray-400 flex items-center gap-2"><i class="fa-solid fa-box-open"></i> Vault</button>
         <button id="tab-pricing" onclick="showDash('pricing')" class="dash-tab btn-liquid px-4 py-2.5 rounded-xl font-poppins font-semibold text-xs uppercase tracking-wider text-gray-400 flex items-center gap-2"><i class="fa-solid fa-tags"></i> Pricing</button>
+        <button id="tab-reviews" onclick="showDash('reviews');loadAdminReviews()" class="dash-tab btn-liquid px-4 py-2.5 rounded-xl font-poppins font-semibold text-xs uppercase tracking-wider text-gray-400 flex items-center gap-2"><i class="fa-solid fa-star"></i> Reviews</button>
         <button id="tab-users" onclick="showDash('users');loadAdminUsers()" class="dash-tab btn-liquid px-4 py-2.5 rounded-xl font-poppins font-semibold text-xs uppercase tracking-wider text-gray-400 flex items-center gap-2"><i class="fa-solid fa-users"></i> Users</button>
         <button id="tab-branding" onclick="showDash('branding')" class="dash-tab btn-liquid px-4 py-2.5 rounded-xl font-poppins font-semibold text-xs uppercase tracking-wider text-gray-400 flex items-center gap-2"><i class="fa-solid fa-palette"></i> Branding</button>
       </div>
@@ -1929,6 +2365,38 @@ Reply to customer: ${email}`
             <button onclick="loadAdminUsers()" class="btn-icon text-gray-500 hover:text-purple-300"><i class="fa-solid fa-rotate-right text-xs"></i></button>
           </div>
           <div id="adminUserList" class="flex flex-col gap-4 max-h-[700px] overflow-y-auto pr-1">
+            <div class="flex justify-center py-10"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ORDERS SECTION -->
+      <div id="ordersSection" class="dash-section">
+        <div class="glass-card rounded-2xl p-6">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="font-bebas text-2xl text-white tracking-wider flex items-center gap-2"><i class="fa-solid fa-bag-shopping text-purple-400"></i> Customer Orders</h2>
+              <p class="font-mono text-xs text-gray-600 mt-1">Accept, track and manage orders</p>
+            </div>
+            <button onclick="loadAdminOrders()" class="btn-icon text-gray-500 hover:text-purple-300"><i class="fa-solid fa-rotate-right text-xs"></i></button>
+          </div>
+          <div id="adminOrderList" class="flex flex-col gap-4 max-h-[700px] overflow-y-auto pr-1">
+            <div class="flex justify-center py-10"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- REVIEWS SECTION -->
+      <div id="reviewsSection" class="dash-section">
+        <div class="glass-card rounded-2xl p-6">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="font-bebas text-2xl text-white tracking-wider flex items-center gap-2"><i class="fa-solid fa-star text-purple-400"></i> Customer Reviews</h2>
+              <p class="font-mono text-xs text-gray-600 mt-1">Approve reviews before they go public</p>
+            </div>
+            <button onclick="loadAdminReviews()" class="btn-icon text-gray-500 hover:text-purple-300"><i class="fa-solid fa-rotate-right text-xs"></i></button>
+          </div>
+          <div id="adminReviewList" class="flex flex-col gap-4 max-h-[700px] overflow-y-auto pr-1">
             <div class="flex justify-center py-10"><div class="spinner"></div></div>
           </div>
         </div>

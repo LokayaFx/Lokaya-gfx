@@ -176,6 +176,8 @@
       if (ctaSection) ctaSection.style.display = user ? "none" : "";
 
       if (user) {
+        // Close auth modal when logged in (Google sign in goes through here)
+        closeAuthModal();
         await ensureUserDoc(user);
         if (!isAdmin && document.getElementById("dashboard")?.classList.contains("active-view"))
           showView("public");

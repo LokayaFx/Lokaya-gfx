@@ -8,9 +8,9 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@300;400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/firebase@10.12.0/firebase-app-compat.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/firebase@10.12.0/firebase-auth-compat.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/firebase@10.12.0/firebase-firestore-compat.min.js"></script>
 
   <script>
     /* Cloudinary config */
@@ -121,6 +121,8 @@
         showToast("Reset email sent! Check your inbox.", "success");
       } catch(e) { document.getElementById("authError").textContent = e.message; }
     };
+
+    window.loginWithGoogle = async () => {
       try {
         await auth.signInWithPopup(provider);
       } catch (e) {
@@ -343,7 +345,7 @@
     ═══════════════════════════════════════════════════════════ */
     async function loadSiteSettings() {
       try {
-        const snap = await db.collection( "settings".get().doc( "site"));
+        const snap = await db.collection("settings").doc("site").get();
         if (snap.exists() && snap.data().logoUrl) {
           SITE_LOGO_URL = snap.data().logoUrl;
           updateNavLogo(SITE_LOGO_URL);
@@ -443,7 +445,7 @@
       setBtnLoading("submitOrderBtn", true);
       try {
         // Save order to Firestore with userId for profile tracking
-        const orderRef = await db.collection( "orders"), {
+        const orderRef = await db.collection("orders").add({
           name, email, phone, design, desc, budget,
           status: "pending",
           statusLabel: "Pending Review",
@@ -656,7 +658,7 @@ Reply to: ${email}`
           await db.collection("portfolio").doc(editId).update( data);
           showToast("Item updated! ✓", "success");
         } else {
-          await db.collection("portfolio"), { ...data, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+          await db.collection("portfolio").add({ ...data, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
           showToast("Added to Armory! ✓", "success");
         }
         clearPortfolioForm(); loadDashboardPortfolio(); loadPublicPortfolio();
@@ -692,7 +694,7 @@ Reply to: ${email}`
     window.deletePortfolioItem = async (id) => {
       if (!confirm("Delete this portfolio item?")) return;
       try {
-        await db.collection("portfolio".delete().doc(id));
+        await db.collection("portfolio").doc(id).delete();
         showToast("Deleted.", "success"); loadDashboardPortfolio(); loadPublicPortfolio();
       } catch (e) { showToast("Error: " + e.message, "error"); }
     };
@@ -855,9 +857,9 @@ Reply to: ${email}`
       if (!text) { showToast("Please write your review.","error"); return; }
       setBtnLoading("submitReviewBtn",true);
       try {
-        const snap = await db.collection("users".get().doc(currentUser.uid));
+        const snap = await db.collection("users").doc(currentUser.uid).get();
         const ud = snap.exists() ? snap.data() : {};
-        await db.collection("reviews"),{
+        await db.collection("reviews").add({
           text,rating,designType:dtype,
           displayName: ud.customDisplayName||ud.displayName||currentUser.displayName||"Customer",
           photoURL: ud.customPhotoURL||ud.photoURL||currentUser.photoURL||"",
@@ -902,7 +904,7 @@ Reply to: ${email}`
     };
     window.deleteReview = async (id) => {
       if (!confirm("Delete this review?")) return;
-      try { await db.collection("reviews".delete().doc(id)); showToast("Deleted.","success"); loadAdminReviews(); loadPublicReviews(); }
+      try { await db.collection("reviews").doc(id).delete(); showToast("Deleted.","success"); loadAdminReviews(); loadPublicReviews(); }
       catch(e) { showToast("Error: "+e.message,"error"); }
     };
 
@@ -985,7 +987,7 @@ Reply to: ${email}`
       try {
         const data = {clientName:client, projectTitle:project, progress, customerEmail:custEmail};
         if (editId) { await db.collection("status").doc(editId).update( data); showToast("Updated! ✓","success"); }
-        else { await db.collection("status"),{...data, createdAt:firebase.firestore.FieldValue.serverTimestamp()}); showToast("Status added! ✓","success"); }
+        else { await db.collection("status").add({...data, createdAt:firebase.firestore.FieldValue.serverTimestamp()}); showToast("Status added! ✓","success"); }
         clearStatusForm(); loadDashboardStatus(); loadPublicStatus();
       } catch (e) { showToast("Error: "+e.message,"error"); }
       setBtnLoading("saveStatusBtn", false);
@@ -1012,7 +1014,7 @@ Reply to: ${email}`
 
     window.deleteStatusItem = async (id) => {
       if (!confirm("Delete this status?")) return;
-      try { await db.collection("status".delete().doc(id)); showToast("Deleted.","success"); loadDashboardStatus(); loadPublicStatus(); }
+      try { await db.collection("status").doc(id).delete(); showToast("Deleted.","success"); loadDashboardStatus(); loadPublicStatus(); }
       catch (e) { showToast("Error: "+e.message,"error"); }
     };
 
@@ -1104,7 +1106,7 @@ Reply to: ${email}`
         }
         const data = {title,desc,downloadUrl:dlUrl,fileCount,fileSize,previewUrl};
         if (editId) { await db.collection("vault").doc(editId).update(data); showToast("Pack updated! ✓","success"); }
-        else { await db.collection("vault"),{...data,createdAt:firebase.firestore.FieldValue.serverTimestamp()}); showToast("Pack added! ✓","success"); }
+        else { await db.collection("vault").add({...data,createdAt:firebase.firestore.FieldValue.serverTimestamp()}); showToast("Pack added! ✓","success"); }
         clearVaultForm(); loadAdminVault(); loadPublicVault();
       } catch (e) { showToast("Error: "+e.message,"error"); }
       setBtnLoading("saveVaultBtn", false);
@@ -1134,7 +1136,7 @@ Reply to: ${email}`
     window.deleteVaultItem = async (id) => {
       if (!confirm("Delete this pack?")) return;
       try {
-        await db.collection("vault".delete().doc(id));
+        await db.collection("vault").doc(id).delete();
         showToast("Deleted.","success"); loadAdminVault(); loadPublicVault();
       } catch (e) { showToast("Error: "+e.message,"error"); }
     };
@@ -1235,7 +1237,7 @@ Reply to: ${email}`
       try {
         const data = {tier,name,subtitle,price,period,features,ctaLabel,ctaUrl,highlighted};
         if (editId) { await db.collection("pricing").doc(editId).update(data); showToast("Tier updated! ✓","success"); }
-        else { await db.collection("pricing"),{...data,createdAt:firebase.firestore.FieldValue.serverTimestamp()}); showToast("Tier added! ✓","success"); }
+        else { await db.collection("pricing").add({...data,createdAt:firebase.firestore.FieldValue.serverTimestamp()}); showToast("Tier added! ✓","success"); }
         clearPricingForm(); loadAdminPricing(); loadPublicPricing();
       } catch (e) { showToast("Error: "+e.message,"error"); }
       setBtnLoading("savePricingBtn",false);
@@ -1267,7 +1269,7 @@ Reply to: ${email}`
 
     window.deletePricingItem = async (id) => {
       if (!confirm("Delete this pricing tier?")) return;
-      try { await db.collection("pricing".delete().doc(id)); showToast("Deleted.","success"); loadAdminPricing(); loadPublicPricing(); }
+      try { await db.collection("pricing").doc(id).delete(); showToast("Deleted.","success"); loadAdminPricing(); loadPublicPricing(); }
       catch (e) { showToast("Error: "+e.message,"error"); }
     };
 

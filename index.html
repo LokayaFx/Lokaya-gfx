@@ -8,19 +8,12 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@300;400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 
-  <script type="module">
-    import { initializeApp }
-      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import {
-      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, updateProfile,
-      createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail
-    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import {
-      getFirestore, collection, addDoc, getDocs, getDoc,
-      deleteDoc, doc, setDoc, updateDoc, query,
-      orderBy, where, serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-    /* Cloudinary config — no Firebase Storage needed */
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    /* Cloudinary config */
     const CLOUDINARY_CLOUD = "dsyvnaog6";
     const CLOUDINARY_PRESET = "lokaya_uploads";
 
@@ -38,10 +31,10 @@
     const ORDER_EMAIL    = "lokayafx@gmail.com";
     let   SITE_LOGO_URL  = "";              // Admin dashboard එකෙන් set වෙනවා
 
-    const app      = initializeApp(firebaseConfig);
-    const auth     = getAuth(app);
-    const db       = getFirestore(app);
-    const provider = new GoogleAuthProvider();
+    const app      = firebase.initializeApp(firebaseConfig);
+    const auth     = firebase.auth();
+    const db       = firebase.firestore();
+    const provider = new firebase.auth.GoogleAuthProvider();
 
     let currentUser    = null;
     let portfolioItems = [];
@@ -82,8 +75,8 @@
       if (pass.length < 6) { errEl.textContent = "Password must be at least 6 characters."; return; }
       setBtnLoading("signUpBtn", true);
       try {
-        const cred = await createUserWithEmailAndPassword(auth, email, pass);
-        await updateProfile(cred.user, { displayName: name });
+        const cred = await auth.createUserWithEmailAndPassword( email, pass);
+        await cred.user.updateProfile( { displayName: name });
         await ensureUserDoc({ ...cred.user, displayName: name });
         closeAuthModal();
         showToast("Welcome to LOKAYA GFX! 🔥", "success");
@@ -105,7 +98,7 @@
       if (!email || !pass) { errEl.textContent = "Email and password required."; return; }
       setBtnLoading("signInBtn", true);
       try {
-        await signInWithEmailAndPassword(auth, email, pass);
+        await auth.signInWithEmailAndPassword( email, pass);
         closeAuthModal();
         showToast("Welcome back! 🔥", "success");
       } catch(e) {
@@ -124,12 +117,12 @@
       const email = document.getElementById("liEmail").value.trim();
       if (!email) { document.getElementById("authError").textContent = "Enter your email first."; return; }
       try {
-        await sendPasswordResetEmail(auth, email);
+        await auth.sendPasswordResetEmail( email);
         showToast("Reset email sent! Check your inbox.", "success");
       } catch(e) { document.getElementById("authError").textContent = e.message; }
     };
       try {
-        await signInWithPopup(auth, provider);
+        await auth.signInWithPopup(provider);
       } catch (e) {
         if (e.code !== "auth/popup-closed-by-user")
           showToast("Login failed: " + e.message, "error");
@@ -137,20 +130,20 @@
     };
 
     window.logoutUser = async () => {
-      await signOut(auth);
+      await auth.signOut();
       showView("public");
       showToast("Signed out. See you next time! 👋", "info");
     };
 
     async function ensureUserDoc(user) {
-      const ref  = doc(db, "users", user.uid);
-      const snap = await getDoc(ref);
+      const ref  = db.collection( "users").doc( user.uid);
+      const snap = await ref.get();
       if (!snap.exists()) {
-        await setDoc(ref, {
+        await ref.set( {
           uid: user.uid, email: user.email,
           displayName: user.displayName || "",
           photoURL: user.photoURL || "",
-          joinedAt: serverTimestamp(),
+          joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
           paid_works_count: 0
         });
       } else {
@@ -159,11 +152,11 @@
         const updates = {};
         if (!d.customDisplayName && user.displayName) updates.displayName = user.displayName;
         if (!d.customPhotoURL && user.photoURL) updates.photoURL = user.photoURL;
-        if (Object.keys(updates).length) await updateDoc(ref, updates);
+        if (Object.keys(updates).length) await ref.update( updates);
       }
     }
 
-    onAuthStateChanged(auth, async user => {
+    auth.onAuthStateChanged( async user => {
       currentUser = user;
       const isAdmin = user && user.email === ADMIN_EMAIL;
 
@@ -252,8 +245,8 @@
     ═══════════════════════════════════════════════════════════ */
     async function loadProfileView() {
       if (!currentUser) return;
-      const ref  = doc(db, "users", currentUser.uid);
-      const snap = await getDoc(ref);
+      const ref  = db.collection( "users").doc( currentUser.uid);
+      const snap = await ref.get();
       const data = snap.exists() ? snap.data() : {};
 
       const displayName = data.customDisplayName || data.displayName || currentUser.displayName || "Player";
@@ -279,10 +272,10 @@
       if (!newName) { showToast("Name cannot be empty.", "error"); return; }
       setBtnLoading("saveNameBtn", true);
       try {
-        await updateDoc(doc(db, "users", currentUser.uid), {
+        await db.collection( "users").doc( currentUser.uid).update( {
           customDisplayName: newName, displayName: newName
         });
-        await updateProfile(currentUser, { displayName: newName });
+        await currentUser.updateProfile( { displayName: newName });
         document.getElementById("profileName").textContent = newName;
         showToast("Display name updated! ✓", "success");
       } catch (e) { showToast("Error: " + e.message, "error"); }
@@ -299,8 +292,8 @@
       showToast("Uploading photo...", "info");
       try {
         const url = await uploadToCloudinary(file, "lokaya/avatars");
-        await updateDoc(doc(db, "users", currentUser.uid), { customPhotoURL: url, photoURL: url });
-        await updateProfile(currentUser, { photoURL: url });
+        await db.collection( "users").doc( currentUser.uid).update( { customPhotoURL: url, photoURL: url });
+        await currentUser.updateProfile( { photoURL: url });
         document.getElementById("profileAvatar").src = url;
         showToast("Profile picture updated! ✓", "success");
       } catch (e) { showToast("Upload failed: " + e.message, "error"); }
@@ -311,8 +304,8 @@
       cont.innerHTML = `<div class="flex justify-center py-10"><div class="spinner"></div></div>`;
       if (!currentUser) return;
       try {
-        const q    = query(collection(db,"status"), where("customerEmail","==",currentUser.email), orderBy("createdAt","desc"));
-        const snap = await getDocs(q);
+        const q = db.collection("status").where("customerEmail","==",currentUser.email).orderBy("createdAt","desc");
+        const snap = await q.get();
         const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         if (!items.length) {
           cont.innerHTML = `<div class="text-center py-12">
@@ -350,7 +343,7 @@
     ═══════════════════════════════════════════════════════════ */
     async function loadSiteSettings() {
       try {
-        const snap = await getDoc(doc(db, "settings", "site"));
+        const snap = await db.collection( "settings".get().doc( "site"));
         if (snap.exists() && snap.data().logoUrl) {
           SITE_LOGO_URL = snap.data().logoUrl;
           updateNavLogo(SITE_LOGO_URL);
@@ -379,7 +372,7 @@
       if (!url) { showToast("Please enter or upload a logo URL.", "error"); return; }
       setBtnLoading("saveLogoBtn", true);
       try {
-        await setDoc(doc(db, "settings", "site"), { logoUrl: url }, { merge: true });
+        await db.collection( "settings").doc( "site").set({ logoUrl: url }, { merge: true });
         SITE_LOGO_URL = url;
         updateNavLogo(url);
         document.getElementById("logoPreview").src = url;
@@ -450,13 +443,13 @@
       setBtnLoading("submitOrderBtn", true);
       try {
         // Save order to Firestore with userId for profile tracking
-        const orderRef = await addDoc(collection(db, "orders"), {
+        const orderRef = await db.collection( "orders"), {
           name, email, phone, design, desc, budget,
           status: "pending",
           statusLabel: "Pending Review",
           userId: currentUser?.uid || "",
           userEmail: currentUser?.email || email,
-          createdAt: serverTimestamp()
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
         // Open mailto
@@ -491,8 +484,8 @@ Reply to: ${email}`
     let allPortfolioItems = [];
     let activeCategory = "all";
     async function fetchPortfolio() {
-      const q = query(collection(db,"portfolio"), orderBy("createdAt","desc"));
-      const snap = await getDocs(q);
+      const q = db.collection("portfolio").orderBy("createdAt","desc");
+      const snap = await q.get();
       allPortfolioItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       portfolioItems = allPortfolioItems;
       return allPortfolioItems;
@@ -660,10 +653,10 @@ Reply to: ${email}`
         }
         const data = { title, desc, imageUrl: imgUrl, category: cat };
         if (editId) {
-          await updateDoc(doc(db,"portfolio",editId), data);
+          await db.collection("portfolio").doc(editId).update( data);
           showToast("Item updated! ✓", "success");
         } else {
-          await addDoc(collection(db,"portfolio"), { ...data, createdAt: serverTimestamp() });
+          await db.collection("portfolio"), { ...data, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
           showToast("Added to Armory! ✓", "success");
         }
         clearPortfolioForm(); loadDashboardPortfolio(); loadPublicPortfolio();
@@ -699,7 +692,7 @@ Reply to: ${email}`
     window.deletePortfolioItem = async (id) => {
       if (!confirm("Delete this portfolio item?")) return;
       try {
-        await deleteDoc(doc(db,"portfolio",id));
+        await db.collection("portfolio".delete().doc(id));
         showToast("Deleted.", "success"); loadDashboardPortfolio(); loadPublicPortfolio();
       } catch (e) { showToast("Error: " + e.message, "error"); }
     };
@@ -712,8 +705,8 @@ Reply to: ${email}`
       if (!cont || !currentUser) return;
       cont.innerHTML = `<div class="flex justify-center py-10"><div class="spinner"></div></div>`;
       try {
-        const q = query(collection(db,"orders"), where("userId","==",currentUser.uid), orderBy("createdAt","desc"));
-        const snap = await getDocs(q);
+        const q = db.collection("orders").where("userId","==",currentUser.uid).orderBy("createdAt","desc");
+        const snap = await q.get();
         const orders = snap.docs.map(d => ({id:d.id,...d.data()}));
         if (!orders.length) {
           cont.innerHTML = `<div class="text-center py-10">
@@ -760,8 +753,8 @@ Reply to: ${email}`
       if (!list) return;
       list.innerHTML = `<div class="flex justify-center py-10"><div class="spinner"></div></div>`;
       try {
-        const q = query(collection(db,"orders"), orderBy("createdAt","desc"));
-        const snap = await getDocs(q);
+        const q = db.collection("orders").orderBy("createdAt","desc");
+        const snap = await q.get();
         const orders = snap.docs.map(d => ({id:d.id,...d.data()}));
         const el = document.getElementById("statOrders"); if(el) el.textContent = orders.length;
         if (!orders.length) { list.innerHTML = `<p class="text-center text-gray-600 py-10 text-sm">No orders yet.</p>`; return; }
@@ -793,7 +786,7 @@ Reply to: ${email}`
     }
     window.loadAdminOrders = loadAdminOrders;
     window.updateOrderStatus = async (id, status) => {
-      try { await updateDoc(doc(db,"orders",id),{status}); showToast(`Order ${status}! ✓`,"success"); loadAdminOrders(); }
+      try { await db.collection("orders").doc(id).update({status}); showToast(`Order ${status}! ✓`,"success"); loadAdminOrders(); }
       catch(e) { showToast("Error: "+e.message,"error"); }
     };
     window.openAdminNoteModal = (id, note) => {
@@ -809,7 +802,7 @@ Reply to: ${email}`
     window.saveAdminNote = async () => {
       const id = document.getElementById("adminNoteOrderId").value;
       const note = document.getElementById("adminNoteText").value.trim();
-      try { await updateDoc(doc(db,"orders",id),{adminNote:note}); showToast("Note saved! ✓","success"); closeAdminNoteModal(); loadAdminOrders(); }
+      try { await db.collection("orders").doc(id).update({adminNote:note}); showToast("Note saved! ✓","success"); closeAdminNoteModal(); loadAdminOrders(); }
       catch(e) { showToast("Error: "+e.message,"error"); }
     };
 
@@ -821,8 +814,8 @@ Reply to: ${email}`
       if (!grid) return;
       grid.innerHTML = `<div class="col-span-full flex justify-center py-10"><div class="spinner"></div></div>`;
       try {
-        const q = query(collection(db,"reviews"), orderBy("createdAt","desc"));
-        const snap = await getDocs(q);
+        const q = db.collection("reviews").orderBy("createdAt","desc");
+        const snap = await q.get();
         const reviews = snap.docs.map(d => ({id:d.id,...d.data()})).filter(r => r.approved);
         if (!reviews.length) { grid.innerHTML = `<div class="col-span-full text-center py-10 text-gray-600 text-sm">No reviews yet. Be the first!</div>`; return; }
         grid.innerHTML = reviews.map(r => {
@@ -862,13 +855,13 @@ Reply to: ${email}`
       if (!text) { showToast("Please write your review.","error"); return; }
       setBtnLoading("submitReviewBtn",true);
       try {
-        const snap = await getDoc(doc(db,"users",currentUser.uid));
+        const snap = await db.collection("users".get().doc(currentUser.uid));
         const ud = snap.exists() ? snap.data() : {};
-        await addDoc(collection(db,"reviews"),{
+        await db.collection("reviews"),{
           text,rating,designType:dtype,
           displayName: ud.customDisplayName||ud.displayName||currentUser.displayName||"Customer",
           photoURL: ud.customPhotoURL||ud.photoURL||currentUser.photoURL||"",
-          userId: currentUser.uid, approved:false, createdAt:serverTimestamp()
+          userId: currentUser.uid, approved:false, createdAt:firebase.firestore.FieldValue.serverTimestamp()
         });
         closeReviewModal();
         document.getElementById("reviewText").value="";
@@ -882,8 +875,8 @@ Reply to: ${email}`
       if (!list) return;
       list.innerHTML = `<div class="flex justify-center py-10"><div class="spinner"></div></div>`;
       try {
-        const q = query(collection(db,"reviews"), orderBy("createdAt","desc"));
-        const snap = await getDocs(q);
+        const q = db.collection("reviews").orderBy("createdAt","desc");
+        const snap = await q.get();
         const reviews = snap.docs.map(d => ({id:d.id,...d.data()}));
         if (!reviews.length) { list.innerHTML = `<p class="text-center text-gray-600 py-10 text-sm">No reviews yet.</p>`; return; }
         list.innerHTML = reviews.map(r => `
@@ -904,12 +897,12 @@ Reply to: ${email}`
     }
     window.loadAdminReviews = loadAdminReviews;
     window.approveReview = async (id) => {
-      try { await updateDoc(doc(db,"reviews",id),{approved:true}); showToast("Approved! ✓","success"); loadAdminReviews(); loadPublicReviews(); }
+      try { await db.collection("reviews").doc(id).update({approved:true}); showToast("Approved! ✓","success"); loadAdminReviews(); loadPublicReviews(); }
       catch(e) { showToast("Error: "+e.message,"error"); }
     };
     window.deleteReview = async (id) => {
       if (!confirm("Delete this review?")) return;
-      try { await deleteDoc(doc(db,"reviews",id)); showToast("Deleted.","success"); loadAdminReviews(); loadPublicReviews(); }
+      try { await db.collection("reviews".delete().doc(id)); showToast("Deleted.","success"); loadAdminReviews(); loadPublicReviews(); }
       catch(e) { showToast("Error: "+e.message,"error"); }
     };
 
@@ -917,8 +910,8 @@ Reply to: ${email}`
        STATUS TRACKER
     ═══════════════════════════════════════════════════════════ */
     async function fetchStatus() {
-      const q = query(collection(db,"status"), orderBy("createdAt","desc"));
-      const snap = await getDocs(q);
+      const q = db.collection("status").orderBy("createdAt","desc");
+      const snap = await q.get();
       statusItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       return statusItems;
     }
@@ -991,8 +984,8 @@ Reply to: ${email}`
       setBtnLoading("saveStatusBtn", true);
       try {
         const data = {clientName:client, projectTitle:project, progress, customerEmail:custEmail};
-        if (editId) { await updateDoc(doc(db,"status",editId), data); showToast("Updated! ✓","success"); }
-        else { await addDoc(collection(db,"status"),{...data, createdAt:serverTimestamp()}); showToast("Status added! ✓","success"); }
+        if (editId) { await db.collection("status").doc(editId).update( data); showToast("Updated! ✓","success"); }
+        else { await db.collection("status"),{...data, createdAt:firebase.firestore.FieldValue.serverTimestamp()}); showToast("Status added! ✓","success"); }
         clearStatusForm(); loadDashboardStatus(); loadPublicStatus();
       } catch (e) { showToast("Error: "+e.message,"error"); }
       setBtnLoading("saveStatusBtn", false);
@@ -1019,7 +1012,7 @@ Reply to: ${email}`
 
     window.deleteStatusItem = async (id) => {
       if (!confirm("Delete this status?")) return;
-      try { await deleteDoc(doc(db,"status",id)); showToast("Deleted.","success"); loadDashboardStatus(); loadPublicStatus(); }
+      try { await db.collection("status".delete().doc(id)); showToast("Deleted.","success"); loadDashboardStatus(); loadPublicStatus(); }
       catch (e) { showToast("Error: "+e.message,"error"); }
     };
 
@@ -1027,8 +1020,8 @@ Reply to: ${email}`
        EDITORS VAULT (Free Pack Downloads)
     ═══════════════════════════════════════════════════════════ */
     async function fetchVault() {
-      const q = query(collection(db,"vault"), orderBy("createdAt","desc"));
-      const snap = await getDocs(q);
+      const q = db.collection("vault").orderBy("createdAt","desc");
+      const snap = await q.get();
       return snap.docs.map(d => ({ id: d.id, ...d.data() }));
     }
 
@@ -1110,8 +1103,8 @@ Reply to: ${email}`
           previewUrl = await uploadToCloudinary(prevFile, "lokaya/vault");
         }
         const data = {title,desc,downloadUrl:dlUrl,fileCount,fileSize,previewUrl};
-        if (editId) { await updateDoc(doc(db,"vault",editId),data); showToast("Pack updated! ✓","success"); }
-        else { await addDoc(collection(db,"vault"),{...data,createdAt:serverTimestamp()}); showToast("Pack added! ✓","success"); }
+        if (editId) { await db.collection("vault").doc(editId).update(data); showToast("Pack updated! ✓","success"); }
+        else { await db.collection("vault"),{...data,createdAt:firebase.firestore.FieldValue.serverTimestamp()}); showToast("Pack added! ✓","success"); }
         clearVaultForm(); loadAdminVault(); loadPublicVault();
       } catch (e) { showToast("Error: "+e.message,"error"); }
       setBtnLoading("saveVaultBtn", false);
@@ -1141,7 +1134,7 @@ Reply to: ${email}`
     window.deleteVaultItem = async (id) => {
       if (!confirm("Delete this pack?")) return;
       try {
-        await deleteDoc(doc(db,"vault",id));
+        await db.collection("vault".delete().doc(id));
         showToast("Deleted.","success"); loadAdminVault(); loadPublicVault();
       } catch (e) { showToast("Error: "+e.message,"error"); }
     };
@@ -1150,8 +1143,8 @@ Reply to: ${email}`
        PRICING / SUBSCRIPTION
     ═══════════════════════════════════════════════════════════ */
     async function fetchPricing() {
-      const q = query(collection(db,"pricing"), orderBy("tier","asc"));
-      const snap = await getDocs(q);
+      const q = db.collection("pricing").orderBy("tier","asc");
+      const snap = await q.get();
       return snap.docs.map(d => ({ id: d.id, ...d.data() }));
     }
 
@@ -1241,8 +1234,8 @@ Reply to: ${email}`
       setBtnLoading("savePricingBtn",true);
       try {
         const data = {tier,name,subtitle,price,period,features,ctaLabel,ctaUrl,highlighted};
-        if (editId) { await updateDoc(doc(db,"pricing",editId),data); showToast("Tier updated! ✓","success"); }
-        else { await addDoc(collection(db,"pricing"),{...data,createdAt:serverTimestamp()}); showToast("Tier added! ✓","success"); }
+        if (editId) { await db.collection("pricing").doc(editId).update(data); showToast("Tier updated! ✓","success"); }
+        else { await db.collection("pricing"),{...data,createdAt:firebase.firestore.FieldValue.serverTimestamp()}); showToast("Tier added! ✓","success"); }
         clearPricingForm(); loadAdminPricing(); loadPublicPricing();
       } catch (e) { showToast("Error: "+e.message,"error"); }
       setBtnLoading("savePricingBtn",false);
@@ -1274,7 +1267,7 @@ Reply to: ${email}`
 
     window.deletePricingItem = async (id) => {
       if (!confirm("Delete this pricing tier?")) return;
-      try { await deleteDoc(doc(db,"pricing",id)); showToast("Deleted.","success"); loadAdminPricing(); loadPublicPricing(); }
+      try { await db.collection("pricing".delete().doc(id)); showToast("Deleted.","success"); loadAdminPricing(); loadPublicPricing(); }
       catch (e) { showToast("Error: "+e.message,"error"); }
     };
 
@@ -1286,7 +1279,7 @@ Reply to: ${email}`
       if (!list) return;
       list.innerHTML = `<div class="flex justify-center py-10"><div class="spinner"></div></div>`;
       try {
-        const snap = await getDocs(collection(db,"users"));
+        const snap = await db.collection("users").get();
         const users = snap.docs.map(d=>({id:d.id,...d.data()}));
         const el = document.getElementById("statUsers"); if(el) el.textContent=users.length;
         if (!users.length){list.innerHTML=`<p class="text-center text-gray-600 py-10 text-sm">No users yet.</p>`;return;}
@@ -1334,7 +1327,7 @@ Reply to: ${email}`
       const count=parseInt(document.getElementById("uwWorksCount").value);
       if(isNaN(count)||count<0){showToast("Enter a valid number.","error");return;}
       setBtnLoading("saveWorksBtn",true);
-      try{await updateDoc(doc(db,"users",uid),{paid_works_count:count});showToast("Updated! ✓","success");closeUpdateWorksModal();loadAdminUsers();}
+      try{await db.collection("users").doc(uid).update({paid_works_count:count});showToast("Updated! ✓","success");closeUpdateWorksModal();loadAdminUsers();}
       catch(e){showToast("Error: "+e.message,"error");}
       setBtnLoading("saveWorksBtn",false);
     };

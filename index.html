@@ -473,7 +473,8 @@ ${desc}
 ================================
 Reply to: ${email}`
         );
-        window.location.href = `mailto:${ORDER_EMAIL}?subject=${subject}&body=${body}`;
+        const mailtoLink = `mailto:${ORDER_EMAIL}?subject=${subject}&body=${body}`;
+        window.open(mailtoLink, "_blank");
 
         document.getElementById("orderFormInner").classList.add("hidden");
         document.getElementById("orderSuccess").classList.remove("hidden");

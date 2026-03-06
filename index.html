@@ -4,6 +4,8 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>LOKAYA GFX — Elite Design Studio</title>
+  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="shortcut icon" href="favicon.ico"/>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@300;400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
@@ -361,11 +363,23 @@
         el.src = url;
         el.classList.remove("hidden");
       });
-      // Hide the default fire icon + text
+      // Hide default fire icon + text in navbar
       const icon = document.getElementById("navLogoIcon");
       const text = document.getElementById("navLogoText");
       if (icon) icon.classList.add("hidden");
       if (text) text.classList.add("hidden");
+      // Hide hero default emoji, show logo
+      const heroDefault = document.getElementById("heroLogoDefault");
+      if (heroDefault) heroDefault.classList.add("hidden");
+      // Hide free logos btn default emoji
+      const freeBtnDefault = document.getElementById("freeBtnDefault");
+      if (freeBtnDefault) freeBtnDefault.classList.add("hidden");
+      // Hide free logos btn emoji
+      const freeBtnDefault = document.getElementById("freeBtnDefault");
+      if (freeBtnDefault) freeBtnDefault.classList.add("hidden");
+      // Hide free button default emoji
+      const freeDefault = document.getElementById("freeBtnDefault");
+      if (freeDefault) freeDefault.classList.add("hidden");
       // Update branding preview
       const preview = document.getElementById("logoPreview");
       if (preview) { preview.src = url; preview.classList.remove("hidden"); }
@@ -1550,13 +1564,11 @@ Reply to: ${email}`
             <p class="font-poppins text-gray-500 text-xs">Message on Discord</p>
           </div>
         </a>
-        <a href="mailto:lokayafx@gmail.com" target="_blank"
-          class="order-choice-card flex-row gap-4 py-4"
-          style="background:rgba(234,88,12,.08);border-color:rgba(234,88,12,.3)">
+        <a href="/cdn-cgi/l/email-protection#83efece8e2fae2e5fbc3e4eee2eaefade0ecee" target="_blank" class="order-choice-card flex-row gap-4 py-4" style="background:rgba(234,88,12,.08);border-color:rgba(234,88,12,.3)">
           <i class="fa-solid fa-envelope text-orange-400 text-2xl"></i>
           <div class="text-left">
             <p class="font-bebas text-white text-lg tracking-wider leading-none">Email</p>
-            <p class="font-poppins text-gray-500 text-xs">lokayafx@gmail.com</p>
+            <p class="font-poppins text-gray-500 text-xs"><span class="__cf_email__" data-cfemail="402c2f2b213921263800272d21292c6e232f2d">[email&#160;protected]</span></p>
           </div>
         </a>
       </div>
@@ -1826,9 +1838,10 @@ Reply to: ${email}`
           Premium Free Fire logos, banners &amp; overlays — crafted for squads that demand elite visual presence.
         </p>
         <div class="flex flex-wrap gap-4 items-center">
-          <a href="https://lokayagfx.netlify.app/" target="_blank"
+          <a href="https://lokayafx.github.io/ff-logo-web/" target="_blank"
             class="btn-liquid px-8 py-4 rounded-xl font-poppins font-bold text-sm text-white uppercase tracking-wider flex items-center gap-2 pulse-glow">
-            🔥 GET FREE LOGOS
+            <img src="" id="freeBtnLogo" class="site-logo-img hidden h-6 w-auto object-contain"/>
+            <span id="freeBtnDefault">🔥</span> GET FREE LOGOS
           </a>
           <a href="#armory" class="font-poppins text-xs text-gray-500 hover:text-purple-300 transition-colors uppercase tracking-wider flex items-center gap-2">
             View Armory <i class="fa-solid fa-arrow-right text-xs"></i>
@@ -1845,7 +1858,8 @@ Reply to: ${email}`
           <div class="glass rounded-2xl w-72 h-72 sm:w-80 sm:h-80 flex items-center justify-center relative overflow-hidden" style="background:rgba(191,0,255,.05)">
             <div class="absolute inset-0 rounded-2xl" style="background:radial-gradient(circle at 50% 30%,rgba(191,0,255,.18),transparent 60%)"></div>
             <div class="relative z-10 text-center">
-              <div class="text-9xl mb-3" style="filter:drop-shadow(0 0 30px #bf00ff) drop-shadow(0 0 60px #7b00cc)">🔥</div>
+              <div id="heroLogoDefault" class="text-9xl mb-3" style="filter:drop-shadow(0 0 30px #bf00ff) drop-shadow(0 0 60px #7b00cc)">🔥</div>
+              <img id="heroLogoImg" src="" alt="LOKAYA GFX" class="site-logo-img hidden w-48 h-48 object-contain mx-auto mb-3" style="filter:drop-shadow(0 0 30px #bf00ff)"/>
               <p class="font-bebas text-xl text-white tracking-widest">LOKAYA GFX</p>
               <p class="font-mono text-xs text-purple-400 mt-1 tracking-widest">ELITE DESIGN STUDIO</p>
             </div>
@@ -2473,5 +2487,4 @@ Reply to: ${email}`
           </div>
 
           <button id="saveLogoBtn" onclick="saveLogoUrl()"
-            class="btn-purple w-full py-3.5 rounded-xl font-poppins font-bold text-sm text-white flex items-center justify-center gap-2">
-            <i class="fa-solid fa-floppy-disk"></i> S
+            class="btn-purple w-full py-3.5 rounded-xl font-poppins font-bold 

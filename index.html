@@ -574,6 +574,11 @@ Reply to: ${email}`
       document.getElementById("orderChoiceModal").classList.remove("flex");
       document.body.style.overflow = "";
     };
+    window.chooseDiscord = () => {
+      const title = document.getElementById("choiceDesign").value;
+      closeOrderChoice();
+      window.open(`https://discordapp.com/users/1029182773472272395`, "_blank");
+    };
     window.chooseWhatsApp = () => {
       const title = document.getElementById("choiceDesign").value;
       closeOrderChoice();
@@ -1463,8 +1468,8 @@ Reply to: ${email}`
     .order-choice-card:hover{transform:translateY(-4px);}
     .order-choice-wa{background:rgba(37,211,102,.08);border-color:rgba(37,211,102,.3);}
     .order-choice-wa:hover{background:rgba(37,211,102,.16);border-color:rgba(37,211,102,.6);box-shadow:0 8px 30px rgba(37,211,102,.2);}
-    .order-choice-web{background:rgba(191,0,255,.08);border-color:rgba(191,0,255,.3);}
-    .order-choice-web:hover{background:rgba(191,0,255,.16);border-color:rgba(191,0,255,.6);box-shadow:0 8px 30px rgba(191,0,255,.2);}
+    .order-choice-discord{background:rgba(88,101,242,.08);border-color:rgba(88,101,242,.3);}
+    .order-choice-discord:hover{background:rgba(88,101,242,.16);border-color:rgba(88,101,242,.6);box-shadow:0 8px 30px rgba(88,101,242,.2);}
     ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:var(--mid);border-radius:4px;}
     section[id]{scroll-margin-top:80px;}
   </style>
@@ -1526,23 +1531,35 @@ Reply to: ${email}`
       <p id="choiceTitle" class="font-mono text-sm text-purple-400 mt-1 truncate"></p>
       <p class="font-poppins text-gray-500 text-xs mt-2">How would you like to place your order?</p>
     </div>
-    <div class="grid grid-cols-2 gap-4">
-      <button onclick="chooseWhatsApp()" class="order-choice-card order-choice-wa">
-        <div class="w-12 h-12 rounded-xl flex items-center justify-center"
-             style="background:rgba(37,211,102,.15);border:1px solid rgba(37,211,102,.3)">
+    <div class="text-center py-4">
+      <p class="font-poppins text-gray-400 text-sm mb-4">Contact me to place your order</p>
+      <div class="glass-card rounded-2xl p-5 flex flex-col gap-3">
+        <a href="https://wa.me/94678803361" target="_blank"
+          class="order-choice-card order-choice-wa flex-row gap-4 py-4">
           <i class="fa-brands fa-whatsapp text-green-400 text-2xl"></i>
-        </div>
-        <p class="font-bebas text-white text-lg tracking-wider">WhatsApp</p>
-        <p class="font-poppins text-gray-500 text-xs">Quick & direct chat</p>
-      </button>
-      <button onclick="chooseWebOrder()" class="order-choice-card order-choice-web">
-        <div class="w-12 h-12 rounded-xl flex items-center justify-center"
-             style="background:rgba(191,0,255,.15);border:1px solid rgba(191,0,255,.3)">
-          <i class="fa-solid fa-globe text-purple-400 text-2xl"></i>
-        </div>
-        <p class="font-bebas text-white text-lg tracking-wider">Order Form</p>
-        <p class="font-poppins text-gray-500 text-xs">Fill in your details</p>
-      </button>
+          <div class="text-left">
+            <p class="font-bebas text-white text-lg tracking-wider leading-none">WhatsApp</p>
+            <p class="font-poppins text-gray-500 text-xs">+94 678 803 361</p>
+          </div>
+        </a>
+        <a href="https://discordapp.com/users/1029182773472272395" target="_blank"
+          class="order-choice-card order-choice-discord flex-row gap-4 py-4">
+          <i class="fa-brands fa-discord text-indigo-400 text-2xl"></i>
+          <div class="text-left">
+            <p class="font-bebas text-white text-lg tracking-wider leading-none">Discord</p>
+            <p class="font-poppins text-gray-500 text-xs">Message on Discord</p>
+          </div>
+        </a>
+        <a href="mailto:lokayafx@gmail.com" target="_blank"
+          class="order-choice-card flex-row gap-4 py-4"
+          style="background:rgba(234,88,12,.08);border-color:rgba(234,88,12,.3)">
+          <i class="fa-solid fa-envelope text-orange-400 text-2xl"></i>
+          <div class="text-left">
+            <p class="font-bebas text-white text-lg tracking-wider leading-none">Email</p>
+            <p class="font-poppins text-gray-500 text-xs">lokayafx@gmail.com</p>
+          </div>
+        </a>
+      </div>
     </div>
   </div>
 </div>

@@ -140,7 +140,7 @@
     async function ensureUserDoc(user) {
       const ref  = db.collection( "users").doc( user.uid);
       const snap = await ref.get();
-      if (!snap.exists()) {
+      if (!snap.exists) {
         await ref.set( {
           uid: user.uid, email: user.email,
           displayName: user.displayName || "",
@@ -251,7 +251,7 @@
       if (!currentUser) return;
       const ref  = db.collection( "users").doc( currentUser.uid);
       const snap = await ref.get();
-      const data = snap.exists() ? snap.data() : {};
+      const data = snap.exists ? snap.data() : {};
 
       const displayName = data.customDisplayName || data.displayName || currentUser.displayName || "Player";
       const photoURL    = data.customPhotoURL    || data.photoURL    || currentUser.photoURL    || "";
@@ -348,7 +348,7 @@
     async function loadSiteSettings() {
       try {
         const snap = await db.collection("settings").doc("site").get();
-        if (snap.exists() && snap.data().logoUrl) {
+        if (snap.exists && snap.data().logoUrl) {
           SITE_LOGO_URL = snap.data().logoUrl;
           updateNavLogo(SITE_LOGO_URL);
         }
@@ -422,6 +422,8 @@
       });
       document.getElementById("orderSuccess").classList.add("hidden");
       document.getElementById("orderFormInner").classList.remove("hidden");
+      const mb = document.getElementById("orderMailtoBtn");
+      if (mb) { mb.href = "#"; mb.classList.add("hidden"); }
     };
 
     window.orderViaWhatsApp = (designTitle) => {
@@ -456,7 +458,7 @@
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // Open mailto
+        // Build mailto
         const subject = encodeURIComponent(`🔥 New Order — ${design} — ${name}`);
         const body = encodeURIComponent(
 `New Order Received!
@@ -474,11 +476,13 @@ ${desc}
 Reply to: ${email}`
         );
         const mailtoLink = `mailto:${ORDER_EMAIL}?subject=${subject}&body=${body}`;
-        window.open(mailtoLink, "_blank");
 
+        // Show success + mailto button (user tap = no popup block)
         document.getElementById("orderFormInner").classList.add("hidden");
         document.getElementById("orderSuccess").classList.remove("hidden");
-        showToast("Order placed! ✓", "success");
+        document.getElementById("orderMailtoBtn").href = mailtoLink;
+        document.getElementById("orderMailtoBtn").classList.remove("hidden");
+        showToast("Order saved! Tap button below to send email. ✓", "success");
       } catch(e) { showToast("Error: " + e.message, "error"); }
       setBtnLoading("submitOrderBtn", false);
     };
@@ -861,7 +865,7 @@ Reply to: ${email}`
       setBtnLoading("submitReviewBtn",true);
       try {
         const snap = await db.collection("users").doc(currentUser.uid).get();
-        const ud = snap.exists() ? snap.data() : {};
+        const ud = snap.exists ? snap.data() : {};
         await db.collection("reviews").add({
           text,rating,designType:dtype,
           displayName: ud.customDisplayName||ud.displayName||currentUser.displayName||"Customer",
@@ -1567,10 +1571,14 @@ Reply to: ${email}`
              style="background:rgba(34,197,94,.15);border:2px solid rgba(34,197,94,.4);box-shadow:0 0 30px rgba(34,197,94,.2)">
           <i class="fa-solid fa-check text-green-400 text-3xl"></i>
         </div>
-        <h3 class="font-bebas text-3xl text-white tracking-wider mb-2">ORDER SENT!</h3>
-        <p class="font-poppins text-gray-400 text-sm mb-1">Your order has been received.</p>
-        <p class="font-poppins text-gray-500 text-xs">We'll contact you at your email within 24 hours. 🔥</p>
-        <button onclick="closeOrderModal()" class="btn-back mt-6 mx-auto">
+        <h3 class="font-bebas text-3xl text-white tracking-wider mb-2">ORDER SAVED!</h3>
+        <p class="font-poppins text-gray-400 text-sm mb-1">Your order has been recorded.</p>
+        <p class="font-poppins text-gray-500 text-xs mb-6">Tap below to send the email to LOKAYA GFX 🔥</p>
+        <a id="orderMailtoBtn" href="#" target="_blank"
+          class="btn-purple w-full py-3.5 rounded-xl font-poppins font-bold text-sm text-white flex items-center justify-center gap-2 mb-3 hidden">
+          <i class="fa-solid fa-envelope"></i> Send Email to LOKAYA GFX
+        </a>
+        <button onclick="closeOrderModal()" class="btn-back mx-auto">
           <i class="fa-solid fa-arrow-left"></i> Back to Armory
         </button>
       </div>

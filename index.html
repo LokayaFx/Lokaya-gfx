@@ -31,7 +31,7 @@
     const ADMIN_EMAIL    = "itzlokaya@gmail.com";
     const WA_NUMBER      = "94678803361";
     const ORDER_EMAIL    = "lokayafx@gmail.com";
-    let   SITE_LOGO_URL  = "";              // Admin dashboard එකෙන් set වෙනවා
+    let   SITE_LOGO_URL  = "https://res.cloudinary.com/dsyvnaog6/image/upload/v1772812450/lokaya/branding/cfps6lwnwxgqhzzkiae1.png";
 
     const app      = firebase.initializeApp(firebaseConfig);
     const auth     = firebase.auth();
@@ -348,6 +348,8 @@
        SITE SETTINGS (Logo URL stored in Firestore)
     ═══════════════════════════════════════════════════════════ */
     async function loadSiteSettings() {
+      // Show default logo immediately
+      updateNavLogo(SITE_LOGO_URL);
       try {
         const snap = await db.collection("settings").doc("site").get();
         if (snap.exists && snap.data().logoUrl) {
